@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <Wire.h>
-#include <robot/utils/Convertion.h>
-#include <robot/RobotManager.h>
+//#include <robot/utils/Convertion.h>
+//#include <robot/RobotManager.h>
 
 #include "define.h"
 
@@ -10,7 +10,7 @@ void setup();
 void loop();
 
 // Classe de convertion
-Convertion Conv = Convertion(4.044, 11.36);
+//Convertion Conv = Convertion(4.044, 11.36);
 
 // ------------------------------------------------------- //
 // ------------------------- MAIN ------------------------ //
@@ -57,7 +57,7 @@ void loop() {
 	// TODO : IA pour le robot
 
 	// Processing de l'asservissement.
-	RM.process();
+	//RM.process();
 }
 
 // ------------------------------------------------------- //
