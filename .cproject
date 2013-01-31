@@ -36,7 +36,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/arduino-core}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/robot-system-lib}&quot;"/>
 								</option>
-								<option id="de.innot.avreclipse.compiler.option.def.531695218" superClass="de.innot.avreclipse.compiler.option.def" valueType="definedSymbols">
+								<option id="de.innot.avreclipse.compiler.option.def.531695218" name="Define Syms (-D)" superClass="de.innot.avreclipse.compiler.option.def" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="__ARDUINO_STANDARD=1"/>
 								</option>
 								<inputType id="de.innot.avreclipse.compiler.winavr.input.1281624109" name="C Source Files" superClass="de.innot.avreclipse.compiler.winavr.input"/>
@@ -48,7 +48,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/arduino-core}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/robot-system-lib}&quot;"/>
 								</option>
-								<option id="de.innot.avreclipse.cppcompiler.option.def.1687169717" superClass="de.innot.avreclipse.cppcompiler.option.def" valueType="definedSymbols">
+								<option id="de.innot.avreclipse.cppcompiler.option.def.1687169717" name="Define Syms (-D)" superClass="de.innot.avreclipse.cppcompiler.option.def" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="__ARDUINO_STANDARD=1"/>
 								</option>
 								<inputType id="de.innot.avreclipse.cppcompiler.input.1290355044" superClass="de.innot.avreclipse.cppcompiler.input"/>
