@@ -10,8 +10,8 @@
 
 #define VERSION			1
 
-// Mode debug : 1 => ON ; 0 => OFF
-#define DEBUG_MODE 		1
+// Mode debug
+#define DEBUG_MODE
 
 // Addresse des composants I2C
 #define ADD_CODEUR_DROIT 	0xB0
