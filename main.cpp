@@ -11,6 +11,7 @@ void loop();
 
 // Classe de convertion
 Convertion Conv = Convertion(4.044, 11.36);
+RobotManager RM = RobotManager();
 
 // ------------------------------------------------------- //
 // ------------------------- MAIN ------------------------ //
@@ -56,6 +57,8 @@ void setup() {
 #ifdef DEBUG_MODE
 		Serial.println(" - I2C [OK] (Master)");
 #endif
+
+	RM.init();
 }
 
 // Méthode appelé encore et encore, tant que la carte reste alimenté.
