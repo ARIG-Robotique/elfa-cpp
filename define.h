@@ -10,17 +10,8 @@
 
 #define VERSION			1
 
-// Mode debug : 1 => ON ; 0 => OFF
-#define DEBUG_MODE 		1
-
-// Definition du mode de comptage
-// 1 : CHA front montant
-// 2 : CHA et CHB front montant
-// 4 : CHA et CHB change
-#define MULT_MODE_1X	1
-#define MULT_MODE_2X	2
-#define MULT_MODE_4X	4
-#define MULT_MODE_SEL	MULT_MODE_1X
+// Mode debug
+#define DEBUG_MODE
 
 // Addresse des composants I2C
 #define ADD_CODEUR_DROIT 	0xB0

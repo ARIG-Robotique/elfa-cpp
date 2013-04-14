@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <Wire.h>
-//#include <robot/utils/Convertion.h>
-//#include <robot/RobotManager.h>
+#include <robot/utils/Convertion.h>
+#include <robot/RobotManager.h>
 
 #include "define.h"
 
@@ -10,7 +10,8 @@ void setup();
 void loop();
 
 // Classe de convertion
-//Convertion Conv = Convertion(4.044, 11.36);
+Convertion Conv = Convertion(4.044, 11.36);
+RobotManager RM = RobotManager();
 
 // ------------------------------------------------------- //
 // ------------------------- MAIN ------------------------ //
@@ -32,24 +33,32 @@ int main(void) {
 
 // Method de configuration pour le fonctionnement du programme
 void setup() {
-	// Initialisation du port série en debug seulement (cf define.h)
-	if (DEBUG_MODE == 1) {
-		Serial.begin(115200);
-		Serial.println(" == INITIALISATION PETIT ROBOT ==");
-	}
+	// ------------------------------------------------------------- //
+	// Initialisation du port série en debug seulement (cf define.h) //
+	// ------------------------------------------------------------- //
+#ifdef DEBUG_MODE
+	Serial.begin(115200);
+	Serial.println(" == INITIALISATION PETIT ROBOT ==");
+#endif
 
-	// Définition des broches IO
+	// ------------------------- //
+	// Définition des broches IO //
+	// ------------------------- //
 	/*pinMode(ADD1, INPUT);*/
 
-	if (DEBUG_MODE == 1) {
-		Serial.println(" - IO [OK]");
-	}
+#ifdef DEBUG_MODE
+	Serial.println(" - IO [OK]");
+#endif
 
-	// Configuration du bus I2C
+	// ------------------------ //
+	// Configuration du bus I2C //
+	// ------------------------ //
 	Wire.begin();
-	if (DEBUG_MODE == 1) {
+#ifdef DEBUG_MODE
 		Serial.println(" - I2C [OK] (Master)");
-	}
+#endif
+
+	RM.init();
 }
 
 // Méthode appelé encore et encore, tant que la carte reste alimenté.
@@ -57,7 +66,7 @@ void loop() {
 	// TODO : IA pour le robot
 
 	// Processing de l'asservissement.
-	//RM.process();
+	RM.process();
 }
 
 // ------------------------------------------------------- //
