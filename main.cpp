@@ -17,9 +17,9 @@ RobotManager RM = RobotManager();
 // ------------------------- MAIN ------------------------ //
 // ------------------------------------------------------- //
 
-// Point d'entrée du programme
+// Point d'entrÈe du programme
 int main(void) {
-	// Initialisation du SDK Arduino. A réécrire si on veut customisé tout le bouzin.
+	// Initialisation du SDK Arduino. A rÈÈcrire si on veut customisÈ tout le bouzin.
 	init();
 
 	// Initialisation de l'application
@@ -34,15 +34,15 @@ int main(void) {
 // Method de configuration pour le fonctionnement du programme
 void setup() {
 	// ------------------------------------------------------------- //
-	// Initialisation du port série en debug seulement (cf define.h) //
+	// Initialisation du port sÈrie en debug seulement (cf define.h) //
 	// ------------------------------------------------------------- //
 #ifdef DEBUG_MODE
 	Serial.begin(115200);
-	Serial.println(" == INITIALISATION PETIT ROBOT ==");
+	Serial.println(" == INITIALISATION ELFA ==");
 #endif
 
 	// ------------------------- //
-	// Définition des broches IO //
+	// DÈfinition des broches IO //
 	// ------------------------- //
 	/*pinMode(ADD1, INPUT);*/
 
@@ -61,7 +61,7 @@ void setup() {
 	RM.init();
 }
 
-// Méthode appelé encore et encore, tant que la carte reste alimenté.
+// MÈthode appelÈ encore et encore, tant que la carte reste alimentÈ.
 void loop() {
 	// TODO : IA pour le robot
 
@@ -73,8 +73,8 @@ void loop() {
 // -------------------- BUSINESS METHODS ----------------- //
 // ------------------------------------------------------- //
 
-// Réinitialisation des valeurs de comptage
+// RÈinitialisation des valeurs de comptage
 void resetEncodeursValues() {
 	// Reset sur les cartes codeurs
-	// TODO : Ajouter ça dans le robot manager
+	// TODO : Ajouter dans le robot manager
 }
