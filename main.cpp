@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include <Wire.h>
-#include <robot/utils/Convertion.h>
+#include <utils/Convertion.h>
 #include <robot/RobotManager.h>
 
 #include "define.h"
@@ -17,9 +17,9 @@ RobotManager RM = RobotManager();
 // ------------------------- MAIN ------------------------ //
 // ------------------------------------------------------- //
 
-// Point d'entrée du programme
+// Point d'entrÃ©e du programme
 int main(void) {
-	// Initialisation du SDK Arduino. A réécrire si on veut customisé tout le bouzin.
+	// Initialisation du SDK Arduino. A rÃ©Ã©crire si on veut customisÃ© tout le bouzin.
 	init();
 
 	// Initialisation de l'application
@@ -34,7 +34,7 @@ int main(void) {
 // Method de configuration pour le fonctionnement du programme
 void setup() {
 	// ------------------------------------------------------------- //
-	// Initialisation du port série en debug seulement (cf define.h) //
+	// Initialisation du port sÃ©rie en debug seulement (cf define.h) //
 	// ------------------------------------------------------------- //
 #ifdef DEBUG_MODE
 	Serial.begin(115200);
@@ -42,7 +42,7 @@ void setup() {
 #endif
 
 	// ------------------------- //
-	// Définition des broches IO //
+	// DÃ©finition des broches IO //
 	// ------------------------- //
 	/*pinMode(ADD1, INPUT);*/
 
@@ -61,7 +61,7 @@ void setup() {
 	RM.init();
 }
 
-// Méthode appelé encore et encore, tant que la carte reste alimenté.
+// MÃ©thode appelÃ© encore et encore, tant que la carte reste alimentÃ©.
 void loop() {
 	// TODO : IA pour le robot
 
@@ -73,7 +73,7 @@ void loop() {
 // -------------------- BUSINESS METHODS ----------------- //
 // ------------------------------------------------------- //
 
-// Réinitialisation des valeurs de comptage
+// RÃ©initialisation des valeurs de comptage
 void resetEncodeursValues() {
 	// Reset sur les cartes codeurs
 	// TODO : Ajouter dans le robot manager
