@@ -1,47 +1,104 @@
 /*
  * define.h
  *
- *  Created on: 1 janv. 2013
+ *  Created on: 27 janv. 2013
  *      Author: mythril
  */
 
 #ifndef DEFINE_H_
 #define DEFINE_H_
 
-#define VERSION			1
+#define VERSION						1
 
-// Mode debug
 #define DEBUG_MODE
 
-// Addresse des composants I2C
-#define ADD_CODEUR_DROIT 	0xB0
-#define ADD_CODEUR_GAUCHE	0xB2
+#define TPS_MATCH                   89800 // 89,5 sec pour palier au pb de réaction du bonhomme
+#define END_TOUT					90000 // 90 sec c'est vraiment la fin de tout
 
-// Pin des IO
-#define CDX_DROIT_SORTIE	1
-#define CDX_DROIT_RENTRE	2
-#define CDX_GAUCHE_SORTIE	3
-#define CDX_GAUCHE_RENTRE	4
-// TODO : Ajouter les GP2D
+#define EQUIPE_VERTE				1
+#define EQUIPE_JAUNE				0
 
-// Pin pour les moteurs
-#define MOT_DROIT_VITESSE	1
-#define MOT_DROIT_SENS		1
-#define MOT_DROIT_BRAKE		1
-#define MOT_DROIT_COURANT	A1
-#define MOT_DROIT_ALERT		1
+// ---------------------- //
+// Adresse des cartes I2C //
+// ---------------------- //
+#define NB_I2C_DEVICE				12
 
-#define MOT_GAUCHE_VITESSE	1
-#define MOT_GAUCHE_SENS		1
-#define MOT_GAUCHE_BRAKE	1
-#define MOT_GAUCHE_COURANT	A2
-#define MOT_GAUCHE_ALERT	1
+#define OLED_LCD_ADD_BOARD			0x3C
+#define PCF_GYRO_ADD_BOARD			0x3E
+#define PCF_CAPTEURS_ADD_BOARD		0x3F
+#define GP2D_ADD_BOARD				0x48
+#define MD22_ADD_BOARD				0x58
+#define SD21_ADD_BOARD				0x61
+#define ENCODEUR_GAUCHE_BOARD	 	0xB2
+#define ENCODEUR_DROIT_BOARD	  	0xB0
 
-// Pin pour les Servo moteurs
-#define SERVO_VERRE			12
+// --------------------------------- //
+// Configuration de l'asservissement //
+// --------------------------------- //
 
-// Position pour les servos
-#define SERVO_VERRE_OUVERT	50
-#define SERVO_VERRE_FERME	50
+#define TIME_ASSERV_MS				10
+
+// ------------------------------- //
+// Configuration des servo moteurs //
+// ------------------------------- //
+
+#define SERVO_STAB					1
+#define SERVO_GP2D					2
+#define SERVO_TAPIS_HAUT			3
+#define SERVO_TAPIS_BAS				4
+
+#define SPEED_STAB					15
+#define SPEED_GP2D					25
+#define SPEED_TAPIS					5
+
+#define STAB_BAS					620
+#define STAB_HAUT                   2000
+
+#define GP2D_GARAGE					1010
+#define GP2D_MATCH 					1120
+#define GP2D_ESCALIER				1840
+
+#define TAPIS_HAUT_OUVERT			1500
+#define TAPIS_HAUT_FERME			1500
+#define TAPIS_BAS_OUVERT			1500
+#define TAPIS_BAS_FERME				1500
+
+// ------------------------------------ //
+// Gestion de la stabilisation escalier //
+// ------------------------------------ //
+
+#define SENS_BEQUILLE_MONTE			LOW
+#define SENS_BEQUILLE_DESCENT		HIGH
+
+// --------------- //
+// IO des capteurs //
+// --------------- //
+
+// Output
+#define OLED_RST       4
+
+#define PWM_R          10
+#define PWM_G          9
+#define PWM_B          8
+
+#define PWM_MOTA       11
+#define DIR_MOTA       12
+#define PWM_MOTB       6
+#define DIR_MOTB       7
+
+// Input
+#define PIN_IRQ_1_2    2
+#define PIN_IRQ_3_4    3
+#define PIN_IRQ_5      18
+#define PIN_IRQ_6      19
+#define EQUIPE         A0
+#define CURRENT_MOTA   A1
+#define CURRENT_MOTB   A2
+
+// Interrupts
+#define ISR_1_2        0
+#define ISR_3_4        1
+#define ISR_5          5
+#define ISR_6          4
 
 #endif /* DEFINE_H_ */
