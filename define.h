@@ -12,8 +12,8 @@
 
 #define DEBUG_MODE
 
-#define TPS_MATCH                   89800 // 89,5 sec pour palier au pb de réaction du bonhomme
-#define END_TOUT					90000 // 90 sec c'est vraiment la fin de tout
+#define TPS_MATCH                   29800 // 89,5 sec pour palier au pb de réaction du bonhomme
+#define END_TOUT					30000 // 90 sec c'est vraiment la fin de tout
 
 #define EQUIPE_VERTE				1
 #define EQUIPE_JAUNE				0
@@ -29,8 +29,8 @@
 #define GP2D_ADD_BOARD				0x48
 #define MD22_ADD_BOARD				0x58
 #define SD21_ADD_BOARD				0x61
-#define ENCODEUR_GAUCHE_BOARD	 	0xB2
 #define ENCODEUR_DROIT_BOARD	  	0xB0
+#define ENCODEUR_GAUCHE_BOARD	 	0xB2
 
 // --------------------------------- //
 // Configuration de l'asservissement //
@@ -94,6 +94,10 @@
 #define EQUIPE         A0
 #define CURRENT_MOTA   A1
 #define CURRENT_MOTB   A2
+
+// Input Expanders
+#define SW_BEQUILLE	   0
+#define SW_TIRETTE     1
 
 // Interrupts
 #define ISR_1_2        0

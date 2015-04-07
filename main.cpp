@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <Wire.h>
 
+#include <robot/system/capteurs/BoardPCF8574.h>
 #include <robot/system/encoders/ARIGEncodeurs.h>
 #include <robot/system/motors/MD22.h>
 #include <robot/system/servos/SD21.h>
@@ -20,10 +21,6 @@ void endMatch();
 void nextEtape();
 void heartBeat();
 
-// Prototype des fonction d'interruptions
-void refreshCapteurs();
-void refreshGyro();
-
 // Prototype des fonctions business
 boolean hasObstacle();
 void servosHome();
@@ -33,8 +30,8 @@ int heartTimePrec;
 int heartTime;
 boolean heart;
 
-// Classe de convertion (pour 2000 CPR, rayon 19,9 et entraxe 161)
-Convertion Conv = Convertion(15.9954716675272, 44.9469570072585);
+// Classe de convertion (pour 500 CPR x 4)
+Convertion Conv = Convertion(1, 1);
 
 // Classe de gestion du robot (asserv, odométrie, pathfinding, evittement, etc...)
 RobotManager robotManager = RobotManager();
@@ -44,9 +41,9 @@ SD21 servoManager = SD21(SD21_ADD_BOARD);
 MD22 motorsPropulsion = MD22(MD22_ADD_BOARD, 0, 0);
 ARIGEncodeurs encodeurs = ARIGEncodeurs(ENCODEUR_GAUCHE_BOARD, ENCODEUR_DROIT_BOARD);
 Adafruit_SSD1306 lcd = Adafruit_SSD1306(OLED_RST);
+BoardPCF8574 ioGyro = BoardPCF8574("Gyro", PCF_GYRO_ADD_BOARD);
+BoardPCF8574 ioCapteurs = BoardPCF8574("Num", PCF_CAPTEURS_ADD_BOARD);
 // TODO : Capteurs
-//PCF8574 ioGyro = PCF8574(PCF_GYRO_ADD_BOARD);
-//PCF8574 ioCapteurs = PCF8574(PCF_CAPTEURS_ADD_BOARD);
 //CapteursAnaI2C ioGp2D = CapteursAnaI2C(GP2D_ADD_BOARD);
 
 // Gestion des étapes
@@ -64,13 +61,13 @@ const double rampDecOrientation = 200.0; // en mm/s2
 // -------------- //
 // Parametres PID //
 // -------------- //
-const double kpDistance = 0.30;
-const double kiDistance = 0.20;
-const double kdDistance = 0.90;
+const double kpDistance = 0.50;
+const double kiDistance = 0.00;
+const double kdDistance = 0.00;
 
-const double kpOrientation = 1.00;
-const double kiOrientation = 0.10;
-const double kdOrientation = 1.00;
+const double kpOrientation = 0.50;
+const double kiOrientation = 0.00;
+const double kdOrientation = 0.00;
 
 // Constantes d'ajustement pour les roues folles
 const double coefRoueDroite = 1.00;
@@ -105,14 +102,6 @@ void setup() {
 
 	// Tempo attente pour boot autres cartes
 	delay(4000);
-	byte nbDevices = i2cUtils.scan();
-	if (nbDevices != NB_I2C_DEVICE) {
-#ifdef DEBUG_MODE
-		Serial.println(" [ ERROR ] Il manque des périphériques I2C. Check the connections");
-#endif
-		// Il manque des périphérique on bloque tout
-		while(1 == 1);
-	}
 
 	// ------------------------ //
 	// Initialisation ecran LCD //
@@ -121,6 +110,24 @@ void setup() {
 	lcd.display();
 	lcd.setTextSize(1);
 	lcd.setTextColor(WHITE);
+
+	// Affichage du logo
+	delay(2000);
+
+	byte nbDevices = i2cUtils.scan();
+	if (nbDevices != NB_I2C_DEVICE) {
+#ifdef DEBUG_MODE
+		Serial.println(" [ ERROR ] Il manque des périphériques I2C. Check the connections");
+#endif
+		lcd.clearDisplay();
+		lcd.setTextSize(2);
+		lcd.println("Erreur I2C");
+		lcd.print(nbDevices);lcd.print(" / ");lcd.println(NB_I2C_DEVICE);
+		lcd.display();
+
+		// Il manque des périphérique on bloque tout
+		while(1 == 1);
+	}
 
 	// ------------- //
 	// Servo manager //
@@ -206,14 +213,10 @@ void setup() {
 #endif
 
 	// Inputs Expander Capteurs
-
+	ioGyro.refresh();
 
 	// Inputs Expander Gyro
-
-
-	// Interruptions
-	attachInterrupt(ISR_1_2, refreshCapteurs, FALLING);
-	attachInterrupt(ISR_3_4, refreshGyro, FALLING);
+	ioCapteurs.refresh();
 
 	// Configuration par défaut des variables
 	heartTime = heartTimePrec = millis();
@@ -249,26 +252,38 @@ int main(void) {
 	lcd.print("Equipe -> ");lcd.println((team == EQUIPE_JAUNE) ? "JAUNE" : "VERTE");
 	lcd.display();
 	delay(10000);
-	/*if (!capteurs.readCapteurValue(TIRETTE)) {
+	if (!ioCapteurs.readCapteurValue(SW_TIRETTE)) {
+		lcd.clearDisplay();
+		lcd.setCursor(0, 0);
+		lcd.println("/!\\ Manque tirette !");
+		lcd.display();
+
 #ifdef DEBUG_MODE
 		Serial.println(" -> /!\\ La tirette n'est pas présente il faut d'abord la mettre !");
-		while(!capteurs.readCapteurValue(TIRETTE));
-		delay(1000);
 #endif
-	}*/
+
+		while(!ioCapteurs.readCapteurValue(SW_TIRETTE));
+		delay(1000);
+	}
 
 #ifdef DEBUG_MODE
 	Serial.println(" -> Attente depart tirette ...");
 #endif
 
-	/*while(capteurs.readCapteurValue(TIRETTE)) {
+	lcd.clearDisplay();
+	lcd.println("Attente départ tirette");
+	lcd.display();
+
+	while(ioCapteurs.readCapteurValue(SW_TIRETTE)) {
 		heartBeat();
+#ifdef DEBUG_MODE
 		if (Serial.available()) {
 			if (Serial.read() == 's') { // La touche s de la liaison série est égal à la tirette
 				break;
 			}
 		}
-	}*/
+#endif
+	}
 
 	// Démarrage du comptage
 	unsigned long startMatch = millis();
@@ -285,24 +300,24 @@ int main(void) {
 #ifdef DEBUG_MODE
 		Serial.println("JAUNE");
 #endif
-		robotManager.setPosition(Conv.mmToPulse(2850), Conv.mmToPulse(250), Conv.degToPulse(135));
+		//robotManager.setPosition(Conv.mmToPulse(2850), Conv.mmToPulse(250), Conv.degToPulse(135));
 	} else {
 #ifdef DEBUG_MODE
 		Serial.println("VERTE");
 #endif
-		robotManager.setPosition(Conv.mmToPulse(150), Conv.mmToPulse(250), Conv.degToPulse(45));
+		//robotManager.setPosition(Conv.mmToPulse(150), Conv.mmToPulse(250), Conv.degToPulse(45));
 	}
 
 	// Pour tester //
 	// TODO : A supprimer
-	//robotManager.setPosition(0, 0, 0);
-	robotManager.setPosition(Conv.mmToPulse(300), Conv.mmToPulse(300), Conv.degToPulse(90));
+	robotManager.setPosition(0, 0, 0);
+	//robotManager.setPosition(Conv.mmToPulse(300), Conv.mmToPulse(300), Conv.degToPulse(90));
 
 #ifdef DEBUG_MODE
 	Serial.println(" == DEBUT DU MATCH ==");
 
 	// En tête de log
-	Serial.println("Gauche;Droit;X;Y;A;Type;Cons. Dist.;Cons. Orient.;PID Dist. setPoint;PID Dist. In;PID Dist. sumErr;PID Dist. Out;PID O setPoint;PID O In;PID O sumErr;PID O Out;Approche;Atteint");
+	Serial.println("#Gauche;Droit;X;Y;A;Type;Cons. Dist.;Cons. Orient.;PID Dist. setPoint;PID Dist. In;PID Dist. sumErr;PID Dist. Out;PID O setPoint;PID O In;PID O sumErr;PID O Out;Approche;Atteint");
 #endif
 
 	do {
@@ -312,6 +327,7 @@ int main(void) {
 		// Gestion du temps
 		t = millis();
 		lcd.clearDisplay();
+		lcd.setCursor(0,0);
 		lcd.print("Time : ");lcd.print((int) (t - startMatch) / 1000);lcd.println(" s");
 		lcd.display();
 	} while(t - startMatch <= TPS_MATCH);
@@ -319,9 +335,6 @@ int main(void) {
 	// Plus de mouvement on arrete les moteurs.
 	robotManager.stop();
 
-#ifdef DEBUG_MODE
-	Serial.println(" == FIN DU MATCH ==");
-#endif
 	while(millis() - startMatch <= END_TOUT);
 	endMatch();
 
@@ -347,11 +360,12 @@ void nextEtape(){
 	switch (gestEtapes) {
 	// Pour tester les valeurs de convertions
 	case 0 :
-		robotManager.setVitesse(300.0, 600.0);
-		robotManager.gotoPointMM(300.0, 2500.0, false);
+		robotManager.setVitesse(100.0, 100.0);
+		robotManager.avanceMM(1000);
+		//robotManager.gotoPointMM(300.0, 340.0, true);
 		gestEtapes++;
 		break;
-	case 1 :
+	/*case 1 :
 		robotManager.setVitesse(300.0, 600.0);
 		robotManager.gotoPointMM(1800.0, 2800.0, false);
 		gestEtapes++;
@@ -365,7 +379,7 @@ void nextEtape(){
 		robotManager.setVitesse(100.0, 300.0);
 		robotManager.gotoPointMM(300.0, 300.0, true);
 		gestEtapes++;
-		break;
+		break;*/
 	}
 }
 
@@ -378,21 +392,10 @@ void endMatch() {
 #endif
 
 	lcd.clearDisplay();
+	lcd.setCursor(0,0);
 	lcd.setTextSize(4);
 	lcd.println("FIN");
 	lcd.display();
-}
-
-// ------------------------------------------------------- //
-// ------------------ INTERRUPTION METHODS --------------- //
-// ------------------------------------------------------- //
-
-void refreshCapteurs() {
-
-}
-
-void refreshGyro() {
-
 }
 
 // ------------------------------------------------------- //
