@@ -38,7 +38,7 @@ RobotManager robotManager = RobotManager();
 
 // I2C Boards
 SD21 servoManager = SD21(SD21_ADD_BOARD);
-MD22 motorsPropulsion = MD22(MD22_ADD_BOARD, 0, 0);
+MD22 motorsPropulsion = MD22(MD22_ADD_BOARD, MODE_1, 0);
 ARIGEncodeurs encodeurs = ARIGEncodeurs(ENCODEUR_GAUCHE_BOARD, ENCODEUR_DROIT_BOARD);
 Adafruit_SSD1306 lcd = Adafruit_SSD1306(OLED_RST);
 BoardPCF8574 ioGyro = BoardPCF8574("Gyro", PCF_GYRO_ADD_BOARD);
@@ -148,7 +148,7 @@ void setup() {
 #ifdef DEBUG_MODE
 	motorsPropulsion.printVersion();
 #endif
-	motorsPropulsion.assignMotors(ASSIGN_MOTOR_2, ASSIGN_MOTOR_1);
+	motorsPropulsion.assignMotors(ASSIGN_MOTOR_1, ASSIGN_MOTOR_2);
 
 	// --------- //
 	// Encodeurs //
