@@ -61,12 +61,12 @@ const double rampDecOrientation = 200.0; // en mm/s2
 // -------------- //
 // Parametres PID //
 // -------------- //
-const double kpDistance = 0.50;
-const double kiDistance = 0.00;
+const double kpDistance = 0.10;
+const double kiDistance = 0.20;
 const double kdDistance = 0.00;
 
-const double kpOrientation = 0.50;
-const double kiOrientation = 0.00;
+const double kpOrientation = 0.10;
+const double kiOrientation = 0.20;
 const double kdOrientation = 0.00;
 
 // Constantes d'ajustement pour les roues folles
@@ -259,7 +259,7 @@ int main(void) {
 		lcd.display();
 
 #ifdef DEBUG_MODE
-		Serial.println(" -> /!\\ La tirette n'est pas présente il faut d'abord la mettre !");
+		Serial.println(" -> /!\\ La tirette n'est pas presente il faut d'abord la mettre !");
 #endif
 
 		while(!ioCapteurs.readCapteurValue(SW_TIRETTE));
@@ -271,7 +271,8 @@ int main(void) {
 #endif
 
 	lcd.clearDisplay();
-	lcd.println("Attente départ tirette");
+	lcd.println("Attente depart");
+	lcd.println("tirette");
 	lcd.display();
 
 	while(ioCapteurs.readCapteurValue(SW_TIRETTE)) {
