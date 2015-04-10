@@ -31,6 +31,7 @@ int heartTime;
 boolean heart;
 
 // Classe de convertion (pour 500 CPR x 4)
+//Convertion Conv = Convertion(6.546203651, 18.05194354);
 Convertion Conv = Convertion(1, 1);
 
 // Classe de gestion du robot (asserv, odométrie, pathfinding, evittement, etc...)
@@ -52,22 +53,22 @@ int gestEtapes;
 // ------------------------ //
 // Configuration des rampes //
 // ------------------------ //
-const double rampAccDistance = 200.0; // en mm/s2
-const double rampDecDistance = 200.0; // en mm/s2
+const double rampAccDistance = 500.0; // en mm/s2
+const double rampDecDistance = 500.0; // en mm/s2
 
-const double rampAccOrientation = 200.0; // en mm/s2
-const double rampDecOrientation = 200.0; // en mm/s2
+const double rampAccOrientation = 500.0; // en mm/s2
+const double rampDecOrientation = 500.0; // en mm/s2
 
 // -------------- //
 // Parametres PID //
 // -------------- //
-const double kpDistance = 0.10;
-const double kiDistance = 0.20;
-const double kdDistance = 0.00;
+const double kpDistance = 1.00;
+const double kiDistance = 1.00;
+const double kdDistance = 1.00;
 
-const double kpOrientation = 0.10;
-const double kiOrientation = 0.20;
-const double kdOrientation = 0.00;
+const double kpOrientation = 1.00;
+const double kiOrientation = 1.00;
+const double kdOrientation = 1.00;
 
 // Constantes d'ajustement pour les roues folles
 const double coefRoueDroite = 1.00;
@@ -251,7 +252,7 @@ int main(void) {
 	lcd.println("Initialisation [OK]");
 	lcd.print("Equipe -> ");lcd.println((team == EQUIPE_JAUNE) ? "JAUNE" : "VERTE");
 	lcd.display();
-	delay(10000);
+	delay(5000);
 	if (!ioCapteurs.readCapteurValue(SW_TIRETTE)) {
 		lcd.clearDisplay();
 		lcd.setCursor(0, 0);
@@ -265,6 +266,24 @@ int main(void) {
 		while(!ioCapteurs.readCapteurValue(SW_TIRETTE));
 		delay(1000);
 	}
+
+	lcd.clearDisplay();
+	lcd.setCursor(0, 0);
+	lcd.println("Positionnement");
+	lcd.println("béquille");
+	lcd.display();
+
+	/*digitalWrite(DIR_MOTB, SENS_BEQUILLE_DESCENT);
+	analogWrite(PWM_MOTB, 200);
+	while(ioCapteurs.readCapteurValue(SW_BEQUILLE));
+	analogWrite(PWM_MOTB, 0);
+	delay(500);*/
+
+	digitalWrite(DIR_MOTB, SENS_BEQUILLE_MONTE);
+	analogWrite(PWM_MOTB, 200);
+	while(!ioCapteurs.readCapteurValue(SW_BEQUILLE));
+	analogWrite(PWM_MOTB, 0);
+
 
 #ifdef DEBUG_MODE
 	Serial.println(" -> Attente depart tirette ...");
@@ -361,8 +380,9 @@ void nextEtape(){
 	switch (gestEtapes) {
 	// Pour tester les valeurs de convertions
 	case 0 :
-		robotManager.setVitesse(100.0, 100.0);
-		robotManager.avanceMM(1000);
+		robotManager.setVitesse(300.0, 300.0);
+		robotManager.avanceMM(5000);
+		//robotManager.tourneDeg(360);
 		//robotManager.gotoPointMM(300.0, 340.0, true);
 		gestEtapes++;
 		break;
