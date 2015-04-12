@@ -75,34 +75,40 @@
 // --------------- //
 
 // Output
-#define OLED_RST       4
+#define OLED_RST       		4
 
-#define PWM_R          10
-#define PWM_G          9
-#define PWM_B          8
+#define PWM_R          		10
+#define PWM_G          		9
+#define PWM_B          		8
 
-#define PWM_MOTA       11
-#define DIR_MOTA       12
-#define PWM_MOTB       6
-#define DIR_MOTB       7
+#define PWM_MOTA       		11
+#define DIR_MOTA       		12
+#define PWM_MOTB       		6
+#define DIR_MOTB       		7
 
 // Input
-#define PIN_IRQ_1_2    2
-#define PIN_IRQ_3_4    3
-#define PIN_IRQ_5      18
-#define PIN_IRQ_6      19
-#define EQUIPE         A0
-#define CURRENT_MOTA   A1
-#define CURRENT_MOTB   A2
+#define PIN_IRQ_1_2    		2
+#define PIN_IRQ_3_4    		3
+#define PIN_IRQ_5      		18
+#define PIN_IRQ_6      		19
+#define EQUIPE         		A0
+#define CURRENT_MOTA   		A1
+#define CURRENT_MOTB   		A2
 
 // Input Expanders
-#define SW_BEQUILLE	   0
-#define SW_TIRETTE     1
+#define SW_BEQUILLE	   		0
+#define SW_TIRETTE     		1
+
+// Input Analogique
+#define GP2D_DROIT_COTE		0
+#define GP2D_DROIT_FRONT	1
+#define GP2D_GAUCHE_FRONT	2
+#define GP2D_GAUCHE_COTE	3
 
 // Interrupts
-#define ISR_1_2        0
-#define ISR_3_4        1
-#define ISR_5          5
-#define ISR_6          4
+#define ISR_1_2        		0
+#define ISR_3_4        		1
+#define ISR_5          		5
+#define ISR_6          		4
 
 #endif /* DEFINE_H_ */

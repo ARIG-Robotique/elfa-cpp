@@ -1,8 +1,9 @@
 #include <Arduino.h>
 #include <Wire.h>
 
-#include <robot/system/capteurs/BoardPCF8574.h>
 #include <robot/system/encoders/ARIGEncodeurs.h>
+#include <robot/system/capteurs/BoardPCF8574.h>
+#include <robot/system/capteurs/BoardI2CADC.h>
 #include <robot/system/motors/MD22.h>
 #include <robot/system/servos/SD21.h>
 #include <robot/RobotManager.h>
@@ -44,8 +45,7 @@ ARIGEncodeurs encodeurs = ARIGEncodeurs(ENCODEUR_GAUCHE_BOARD, ENCODEUR_DROIT_BO
 Adafruit_SSD1306 lcd = Adafruit_SSD1306(OLED_RST);
 BoardPCF8574 ioGyro = BoardPCF8574("Gyro", PCF_GYRO_ADD_BOARD);
 BoardPCF8574 ioCapteurs = BoardPCF8574("Num", PCF_CAPTEURS_ADD_BOARD);
-// TODO : Capteurs
-//CapteursAnaI2C ioGp2D = CapteursAnaI2C(GP2D_ADD_BOARD);
+BoardI2CADC ioGp2D = BoardI2CADC(GP2D_ADD_BOARD);
 
 // Gestion des étapes
 int gestEtapes;
