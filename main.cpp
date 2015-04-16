@@ -32,8 +32,9 @@ int heartTime;
 boolean heart;
 
 // Classe de convertion (pour 500 CPR x 4)
-//Convertion Conv = Convertion(6.546203651, 18.05194354);
-Convertion Conv = Convertion(1, 1);
+// Calcul angle : 360° = 6405 p => 17.791666667 p/°
+// Calcul distance : 1744mm = 10000 p => 5.733944954 p/mm
+Convertion Conv = Convertion(5.733944954, 17.791666667);
 
 // Classe de gestion du robot (asserv, odométrie, pathfinding, evittement, etc...)
 RobotManager robotManager = RobotManager();
@@ -53,11 +54,11 @@ int gestEtapes;
 // ------------------------ //
 // Configuration des rampes //
 // ------------------------ //
-const double rampAccDistance = 500.0; // en mm/s2
-const double rampDecDistance = 500.0; // en mm/s2
+const double rampAccDistance = 300.0; // en mm/s2
+const double rampDecDistance = 300.0; // en mm/s2
 
-const double rampAccOrientation = 500.0; // en mm/s2
-const double rampDecOrientation = 500.0; // en mm/s2
+const double rampAccOrientation = 300.0; // en mm/s2
+const double rampDecOrientation = 300.0; // en mm/s2
 
 // -------------- //
 // Parametres PID //
@@ -66,9 +67,9 @@ const double kpDistance = 1.00;
 const double kiDistance = 1.00;
 const double kdDistance = 1.00;
 
-const double kpOrientation = 1.00;
+const double kpOrientation = 1.20;
 const double kiOrientation = 1.00;
-const double kdOrientation = 1.00;
+const double kdOrientation = 1.20;
 
 // Constantes d'ajustement pour les roues folles
 const double coefRoueDroite = 1.00;
@@ -330,7 +331,7 @@ int main(void) {
 
 	// Pour tester //
 	// TODO : A supprimer
-	robotManager.setPosition(0, 0, 0);
+	robotManager.setPosition(0, 0, Conv.degToPulse(90));
 	//robotManager.setPosition(Conv.mmToPulse(300), Conv.mmToPulse(300), Conv.degToPulse(90));
 
 #ifdef DEBUG_MODE
@@ -348,7 +349,7 @@ int main(void) {
 		t = millis();
 		lcd.clearDisplay();
 		lcd.setCursor(0,0);
-		lcd.print("Time : ");lcd.print((int) (t - startMatch) / 1000);lcd.println(" s");
+		lcd.print("Time : ");lcd.print((t - startMatch) / 1000);lcd.println(" s");
 		lcd.display();
 	} while(t - startMatch <= TPS_MATCH);
 
@@ -380,27 +381,37 @@ void nextEtape(){
 	switch (gestEtapes) {
 	// Pour tester les valeurs de convertions
 	case 0 :
-		robotManager.setVitesse(300.0, 300.0);
-		robotManager.avanceMM(5000);
-		//robotManager.tourneDeg(360);
-		//robotManager.gotoPointMM(300.0, 340.0, true);
+		robotManager.setVitesse(200.0, 200.0);
+		//robotManager.avanceMM(10000);
+		//robotManager.tourneDeg(4*6405);
+		robotManager.gotoPointMM(0.0, 680.0, true);
 		gestEtapes++;
 		break;
-	/*case 1 :
-		robotManager.setVitesse(300.0, 600.0);
-		robotManager.gotoPointMM(1800.0, 2800.0, false);
+	case 1 :
+		robotManager.setVitesse(200.0, 200.0);
+		robotManager.gotoPointMM(380.0, 680.0, true);
 		gestEtapes++;
 		break;
 	case 2 :
-		robotManager.setVitesse(300.0, 600.0);
-		robotManager.gotoPointMM(2000.0, 300.0, false);
+		robotManager.setVitesse(200.0, 200.0);
+		robotManager.gotoPointMM(380.0, 0.0, true);
 		gestEtapes++;
 		break;
 	case 3 :
-		robotManager.setVitesse(100.0, 300.0);
-		robotManager.gotoPointMM(300.0, 300.0, true);
+		robotManager.setVitesse(200.0, 300.0);
+		robotManager.alignFrontTo(0.0, 0.0);
 		gestEtapes++;
-		break;*/
+		break;
+	case 4 :
+		robotManager.setVitesse(200.0, 200.0);
+		robotManager.gotoPointMM(0.0, 0.0, true);
+		gestEtapes++;
+		break;
+	case 5 :
+		robotManager.setVitesse(200.0, 300.0);
+		robotManager.alignFrontTo(0.0, 680.0);
+		gestEtapes++;
+		break;
 	}
 }
 
