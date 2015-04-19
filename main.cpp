@@ -4,14 +4,22 @@
 #include <robot/system/encoders/ARIGEncodeurs.h>
 #include <robot/system/capteurs/BoardPCF8574.h>
 #include <robot/system/capteurs/BoardI2CADC.h>
+#include <robot/system/motors/PWMMotor.h>
 #include <robot/system/motors/MD22.h>
 #include <robot/system/servos/SD21.h>
 #include <robot/RobotManager.h>
 #include <utils/Convertion.h>
 #include <utils/I2CUtils.h>
+#include <filters/Pid.h>
 
+// Ecran LCD
 #include <adafruit/Adafruit_GFX.h>
 #include <adafruit/Adafruit_SSD1306.h>
+
+// 10 DOF (Juste Gyroscope)
+#include <adafruit/Adafruit_10DOF.h>
+#include <adafruit/Adafruit_Sensor.h>
+#include <adafruit/Adafruit_L3GD20_U.h>
 
 #include "define.h"
 
@@ -36,6 +44,10 @@ boolean heart;
 // Calcul distance : 1544mm = 10000 p => 6.476683938 p/mm
 Convertion Conv = Convertion(6.476683938, 17.791666667);
 
+// Moteur pour la béquille
+PWMMotor motBequille = PWMMotor(DIR_MOTB, PWM_MOTB, CURRENT_MOTB);
+Pid pidBequille = Pid();
+
 // Classe de gestion du robot (asserv, odométrie, pathfinding, evittement, etc...)
 RobotManager robotManager = RobotManager();
 
@@ -47,6 +59,7 @@ Adafruit_SSD1306 lcd = Adafruit_SSD1306(OLED_RST);
 BoardPCF8574 ioGyro = BoardPCF8574("Gyro", PCF_GYRO_ADD_BOARD);
 BoardPCF8574 ioCapteurs = BoardPCF8574("Num", PCF_CAPTEURS_ADD_BOARD);
 BoardI2CADC ioGp2D = BoardI2CADC(GP2D_ADD_BOARD);
+Adafruit_L3GD20_Unified gyro = Adafruit_L3GD20_Unified(20);
 
 // Gestion des étapes
 int gestEtapes;
@@ -71,6 +84,9 @@ const double kpO = 0.50;
 const double kiO = 0.25;
 const double kdO = 1.00;
 
+const double kpB = 20.00;
+const double kiB = 0.00;
+const double kdB = 0.00;
 
 // Constantes d'ajustement pour les roues folles
 const double coefRoueDroite = 1.00;
@@ -78,6 +94,12 @@ const double coefRoueGauche = 1.00;
 
 // Variable pour l'équipe
 boolean team;
+
+// Evennement du gyroscope
+double gyroOffset = 0;
+double gyroInputX = 0;
+double gyroOutputX = 0;
+sensors_event_t dofEvt;
 
 // ------------------------------------------------------- //
 // ------------------------- MAIN ------------------------ //
@@ -138,18 +160,48 @@ void setup() {
 		while(1 == 1);
 	}
 
+	// --------- //
+	// Gyroscope //
+	// --------- //
+
+	if (!gyro.begin()) {
+#ifdef DEBUG_MODE
+		Serial.println(" [ ERROR ] Oops, j'ai perdu mon Gyroscope (L3GD20)");
+#endif
+		lcd.clearDisplay();
+		lcd.setTextSize(2);
+		lcd.println("Erreur");
+		lcd.println("Gyroscope");
+		lcd.display();
+
+		// Il manque des périphérique on bloque tout
+		while(1 == 1);
+	}
+
+#ifdef DEBUG_MODE
+	sensor_t sensor;
+	gyro.getSensor(&sensor);
+	Serial.println(F(" -> GYROSCOPE"));
+	Serial.print  (F("    * Sensor    :   ")); Serial.println(sensor.name);
+	Serial.print  (F("    * Driver Ver:   ")); Serial.println(sensor.version);
+	Serial.print  (F("    * Unique ID :   ")); Serial.println(sensor.sensor_id);
+	Serial.print  (F("    * Max Value :   ")); Serial.print(sensor.max_value); Serial.println(F(" rad/s"));
+	Serial.print  (F("    * Min Value :   ")); Serial.print(sensor.min_value); Serial.println(F(" rad/s"));
+	Serial.print  (F("    * Resolution:   ")); Serial.print(sensor.resolution); Serial.println(F(" rad/s"));
+#endif
+
 	// ------------- //
 	// Servo manager //
 	// ------------- //
 #ifdef DEBUG_MODE
-	servoManager.printVersion();
+	//servoManager.printVersion();
 #endif
 
 	// --------------------- //
 	// Moteurs de propulsion //
 	// --------------------- //
 #ifdef DEBUG_MODE
-	motorsPropulsion.printVersion();
+	//motorsPropulsion.printVersion();
 #endif
 	motorsPropulsion.assignMotors(LEFT_MOTOR, RIGHT_MOTOR);
 
@@ -173,6 +225,17 @@ void setup() {
 
 #ifdef DEBUG_MODE
 	Serial.println(" - Robot manager [OK]");
+#endif
+
+	// -------- //
+	// Béquille //
+	// ------- //
+	motBequille.stop();
+	pidBequille.setTunings(kpB, kiB, kdB);
+	pidBequille.reset();
+
+#ifdef DEBUG_MODE
+	Serial.println(" - Config bequille [OK]");
 #endif
 
 	// -- //
@@ -272,16 +335,18 @@ int main(void) {
 	lcd.println("bequille");
 	lcd.display();
 
-	/*digitalWrite(DIR_MOTB, SENS_BEQUILLE_DESCENT);
-	analogWrite(PWM_MOTB, 200);
+	// Descente jusqu'a perdre le fin de course
+	Serial.println("Descente");
+	motBequille.cmd(200);
 	while(ioCapteurs.readCapteurValue(SW_BEQUILLE));
-	analogWrite(PWM_MOTB, 0);
-	delay(500);*/
+	motBequille.stop();
+	delay(500);
 
-	digitalWrite(DIR_MOTB, SENS_BEQUILLE_MONTE);
-	analogWrite(PWM_MOTB, 200);
+	// on remonte jusqu'au fin de course
+	Serial.println("Monte");
+	motBequille.cmd(-200);
 	while(!ioCapteurs.readCapteurValue(SW_BEQUILLE));
-	analogWrite(PWM_MOTB, 0);
+	motBequille.stop();
 
 	// Contrôle présence de la tirette
 	if (!ioCapteurs.readCapteurValue(SW_TIRETTE)) {
@@ -341,7 +406,8 @@ int main(void) {
 	Serial.println(" == DEBUT DU MATCH ==");
 
 	// En tête de log
-	Serial.println("#Gauche;Droit;X;Y;A;Type;Cons. Dist.;Cons. Orient.;PID Dist. setPoint;PID Dist. In;PID Dist. sumErr;PID Dist. Out;PID O setPoint;PID O In;PID O sumErr;PID O Out;Approche;Atteint");
+	//Serial.println("#Gauche;Droit;X;Y;A;Type;Cons. Dist.;Cons. Orient.;PID Dist. setPoint;PID Dist. In;PID Dist. sumErr;PID Dist. Out;PID O setPoint;PID O In;PID O sumErr;PID O Out;Approche;Atteint");
+	Serial.println("#Input Gyro X;Error;Output PID;Courant");
 #endif
 
 	do {
@@ -362,6 +428,7 @@ int main(void) {
 	} while(t - startMatch <= TPS_MATCH);
 
 	// Plus de mouvement on arrete les moteurs.
+	motBequille.stop();
 	robotManager.stop();
 
 	while(millis() - startMatch <= END_TOUT);
@@ -379,10 +446,48 @@ int main(void) {
 void matchLoop() {
 	if(robotManager.getTrajetAtteint() || robotManager.getTrajetEnApproche()) {
 		nextEtape();
+
+		// On est aligné devant les marches.
+		if (gestEtapes == 0) {
+		//if (gestEtapes == 4) {
+			// Récupération de la valeur d'offset du Gyro
+			gyro.getEvent(&dofEvt);
+			gyroOffset = dofEvt.gyro.x * -1;
+			pidBequille.reset();
+
+			// Stabilisation relaché
+			servoManager.setPosition(SERVO_STAB, STAB_HAUT);
+			gestEtapes = 1;
+			//gestEtapes = 5;
+		}
 	}
 
 	// Processing de l'asservissement.
 	robotManager.process();
+
+	// Gestion de l'asservissement gyroscopique
+	if (gestEtapes >= 1) {
+	//if (gestEtapes >= 5) {
+		gyro.getEvent(&dofEvt);
+		gyroInputX += gyroOffset + dofEvt.gyro.x;
+		gyroOutputX = pidBequille.compute(0, gyroInputX);
+		if (ioCapteurs.readCapteurValue(SW_BEQUILLE) && gyroOutputX < 0) {
+			// On ne fait rien
+			pidBequille.reset();
+			motBequille.stop();
+		} else {
+			// On stabilise
+			motBequille.cmd(gyroOutputX);
+		}
+
+#ifdef DEBUG_MODE
+		double e = pidBequille.getError();
+		Serial.print(gyroInputX);
+		Serial.print(";");Serial.print(e);
+		Serial.print(";");Serial.print(gyroOutputX);
+		Serial.print(";");Serial.println(motBequille.current());
+#endif
+	}
 }
 
 // Gestion basique de la stratégie.
@@ -390,39 +495,47 @@ void matchLoop() {
 void nextEtape(){
 	// Etapes >= 0 & < 100 : Cycle normal
 	// Etapes >= 100 : Evittement
+	/*switch (gestEtapes) {
 	case 0 :
-		robotManager.setVitesse(200.0, 200.0);
-		//robotManager.avanceMM(10000);
-		//robotManager.tourneDeg(4*6405);
-		robotManager.gotoPointMM(0.0, 680.0, true);
+		robotManager.setVitesse(400.0, 500.0);
+		robotManager.gotoPointMM(1050.0, 1263.0, false);
 		gestEtapes++;
 		break;
 	case 1 :
-		robotManager.setVitesse(200.0, 200.0);
-		robotManager.gotoPointMM(380.0, 680.0, true);
+		robotManager.setVitesse(400.0, 500.0);
+		robotManager.gotoPointMM(1050.0, 1513.0, false);
 		gestEtapes++;
 		break;
-	case 2 :
-		robotManager.setVitesse(200.0, 200.0);
-		robotManager.gotoPointMM(380.0, 0.0, true);
+	case 2 : // Devant les marches
+		robotManager.setVitesse(100.0, 500.0);
+		robotManager.gotoPointMM(750.0, 1533.0, true);
 		gestEtapes++;
 		break;
 	case 3 :
-		robotManager.setVitesse(200.0, 300.0);
-		robotManager.alignFrontTo(0.0, 0.0);
+		robotManager.setVitesse(500.0, 500.0);
+		robotManager.gotoOrientationDeg(180);
 		gestEtapes++;
 		break;
-	case 4 :
-		robotManager.setVitesse(200.0, 200.0);
-		robotManager.gotoPointMM(0.0, 0.0, true);
+	case 5 : // Montée des marches
+		robotManager.setVitesse(200.0, 500.0);
+		robotManager.avanceMM(1000.0);
 		gestEtapes++;
 		break;
-	case 5 :
-		robotManager.setVitesse(200.0, 300.0);
-		robotManager.alignFrontTo(0.0, 680.0);
-		gestEtapes++;
+	case 6 :
+		// Bas des marches tans que l'on as le capteur bequille
+		if (!ioCapteurs.readCapteurValue(SW_BEQUILLE)) {
+			// Fin de course perdu, l'asserv commence
+			gestEtapes++;
+		}
 		break;
-	}
+	case 7 :
+		// Dès que l'on récupère le fin de cours on stop tout
+		if (ioCapteurs.readCapteurValue(SW_BEQUILLE)) {
+			robotManager.avanceMM(0);
+			gestEtapes++;
+		}
+		break;
+	}*/
 }
 
 // ----------------------------------- //
