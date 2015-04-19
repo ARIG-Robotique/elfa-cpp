@@ -24,7 +24,7 @@ void heartBeat();
 
 // Prototype des fonctions business
 boolean hasObstacle();
-void servosHome();
+boolean lectureEquipe();
 
 // Heartbeat variables
 int heartTimePrec;
@@ -33,8 +33,8 @@ boolean heart;
 
 // Classe de convertion (pour 500 CPR x 4)
 // Calcul angle : 360° = 6405 p => 17.791666667 p/°
-// Calcul distance : 1744mm = 10000 p => 5.733944954 p/mm
-Convertion Conv = Convertion(5.733944954, 17.791666667);
+// Calcul distance : 1544mm = 10000 p => 6.476683938 p/mm
+Convertion Conv = Convertion(6.476683938, 17.791666667);
 
 // Classe de gestion du robot (asserv, odométrie, pathfinding, evittement, etc...)
 RobotManager robotManager = RobotManager();
@@ -54,29 +54,30 @@ int gestEtapes;
 // ------------------------ //
 // Configuration des rampes //
 // ------------------------ //
-const double rampAccDistance = 300.0; // en mm/s2
-const double rampDecDistance = 300.0; // en mm/s2
+const double rampAccDistance = 800.0; // en mm/s2
+const double rampDecDistance = 800.0; // en mm/s2
 
-const double rampAccOrientation = 300.0; // en mm/s2
-const double rampDecOrientation = 300.0; // en mm/s2
+const double rampAccOrientation = 800.0; // en mm/s2
+const double rampDecOrientation = 800.0; // en mm/s2
 
 // -------------- //
 // Parametres PID //
 // -------------- //
-const double kpDistance = 1.00;
-const double kiDistance = 1.00;
-const double kdDistance = 1.00;
+const double kpD = 1.00;
+const double kiD = 0.50;
+const double kdD = 0.25;
 
-const double kpOrientation = 1.20;
-const double kiOrientation = 1.00;
-const double kdOrientation = 1.20;
+const double kpO = 0.50;
+const double kiO = 0.25;
+const double kdO = 1.00;
+
 
 // Constantes d'ajustement pour les roues folles
 const double coefRoueDroite = 1.00;
 const double coefRoueGauche = 1.00;
 
 // Variable pour l'équipe
-byte team;
+boolean team;
 
 // ------------------------------------------------------- //
 // ------------------------- MAIN ------------------------ //
@@ -116,10 +117,16 @@ void setup() {
 	// Affichage du logo
 	delay(2000);
 
+#ifdef DEBUG_MODE
+	lcd.dim(true);
+#else
+	lcd.dim(false);
+#endif
+
 	byte nbDevices = i2cUtils.scan();
 	if (nbDevices != NB_I2C_DEVICE) {
 #ifdef DEBUG_MODE
-		Serial.println(" [ ERROR ] Il manque des périphériques I2C. Check the connections");
+		Serial.println(" [ ERROR ] Il manque des périphériques I2C. Tous est bien branché ?");
 #endif
 		lcd.clearDisplay();
 		lcd.setTextSize(2);
@@ -137,12 +144,6 @@ void setup() {
 #ifdef DEBUG_MODE
 	servoManager.printVersion();
 #endif
-
-	// Configuration des vitesses
-	servoManager.setSpeed(SERVO_STAB, SPEED_STAB);
-	servoManager.setSpeed(SERVO_GP2D, SPEED_GP2D);
-	servoManager.setSpeed(SERVO_TAPIS_HAUT, SPEED_TAPIS);
-	servoManager.setSpeed(SERVO_TAPIS_BAS, SPEED_TAPIS);
 
 	// --------------------- //
 	// Moteurs de propulsion //
@@ -164,8 +165,8 @@ void setup() {
 	robotManager.setEncodeursImpl(&encodeurs);
 	robotManager.setHasObstacle(hasObstacle);
 	robotManager.setSampleTime(TIME_ASSERV_MS);
-	robotManager.setPIDDistance(kpDistance, kiDistance, kdDistance);
-	robotManager.setPIDOrientation(kpOrientation, kiOrientation, kdOrientation);
+	robotManager.setPIDDistance(kpD, kiD, kdD);
+	robotManager.setPIDOrientation(kpO, kiO, kdO);
 	robotManager.setRampAcc(rampAccDistance, rampAccOrientation);
 	robotManager.setRampDec(rampDecDistance, rampDecOrientation);
 	robotManager.init();
@@ -224,7 +225,11 @@ void setup() {
 	heartTime = heartTimePrec = millis();
 	heart = false;
 
-	servosHome();
+	// Configuration des vitesses servos moteurs et position initiale
+	servoManager.setPositionAndSpeed(SERVO_STAB, SPEED_STAB, STAB_BAS);
+	servoManager.setPositionAndSpeed(SERVO_GP2D, SPEED_GP2D, GP2D_GARAGE);
+	servoManager.setPositionAndSpeed(SERVO_TAPIS_BAS, SPEED_TAPIS, TAPIS_BAS_FERME);
+	servoManager.setPositionAndSpeed(SERVO_TAPIS_HAUT, SPEED_TAPIS, TAPIS_HAUT_FERME);
 
 	// Init Gestion Etapes
 	gestEtapes = 0;
@@ -239,10 +244,10 @@ int main(void) {
 	setup();
 
 	// Récupération de la couleur de l'équipe
-	team = analogRead(EQUIPE) > 128 ? EQUIPE_JAUNE : EQUIPE_VERTE;
+	team = lectureEquipe();
 #ifdef DEBUG_MODE
 	// Affichage de la couleur de l'équipe
-	Serial.print(" Equipe -> ");
+	Serial.print(" -> Equipe : ");
 	Serial.println((team == EQUIPE_JAUNE) ? "JAUNE" : "VERTE");
 
 	// Procédure d'initialisation Robot (calage, tirette, etc).
@@ -251,9 +256,34 @@ int main(void) {
 
 	lcd.clearDisplay();
 	lcd.println("Initialisation [OK]");
-	lcd.print("Equipe -> ");lcd.println((team == EQUIPE_JAUNE) ? "JAUNE" : "VERTE");
+	lcd.print("Equipe : ");lcd.println((team == EQUIPE_JAUNE) ? "JAUNE" : "VERTE");
 	lcd.display();
 	delay(5000);
+
+	// TODO Contrôle AU
+
+#ifdef DEBUG_MODE
+		Serial.println(" -> Positionnement de la béquille");
+#endif
+
+	lcd.clearDisplay();
+	lcd.setCursor(0, 0);
+	lcd.println("Positionnement");
+	lcd.println("bequille");
+	lcd.display();
+
+	/*digitalWrite(DIR_MOTB, SENS_BEQUILLE_DESCENT);
+	analogWrite(PWM_MOTB, 200);
+	while(ioCapteurs.readCapteurValue(SW_BEQUILLE));
+	analogWrite(PWM_MOTB, 0);
+	delay(500);*/
+
+	digitalWrite(DIR_MOTB, SENS_BEQUILLE_MONTE);
+	analogWrite(PWM_MOTB, 200);
+	while(!ioCapteurs.readCapteurValue(SW_BEQUILLE));
+	analogWrite(PWM_MOTB, 0);
+
+	// Contrôle présence de la tirette
 	if (!ioCapteurs.readCapteurValue(SW_TIRETTE)) {
 		lcd.clearDisplay();
 		lcd.setCursor(0, 0);
@@ -268,24 +298,7 @@ int main(void) {
 		delay(1000);
 	}
 
-	lcd.clearDisplay();
-	lcd.setCursor(0, 0);
-	lcd.println("Positionnement");
-	lcd.println("béquille");
-	lcd.display();
-
-	/*digitalWrite(DIR_MOTB, SENS_BEQUILLE_DESCENT);
-	analogWrite(PWM_MOTB, 200);
-	while(ioCapteurs.readCapteurValue(SW_BEQUILLE));
-	analogWrite(PWM_MOTB, 0);
-	delay(500);*/
-
-	digitalWrite(DIR_MOTB, SENS_BEQUILLE_MONTE);
-	analogWrite(PWM_MOTB, 200);
-	while(!ioCapteurs.readCapteurValue(SW_BEQUILLE));
-	analogWrite(PWM_MOTB, 0);
-
-
+	// Attente du lancement du match.
 #ifdef DEBUG_MODE
 	Serial.println(" -> Attente depart tirette ...");
 #endif
@@ -313,26 +326,16 @@ int main(void) {
 	// Reset des valeurs codeurs lors des différents mouvements de positionnement
 	robotManager.resetEncodeurs();
 
-	team = analogRead(EQUIPE) > 128 ? EQUIPE_JAUNE : EQUIPE_VERTE;
-#ifdef DEBUG_MODE
-	Serial.print(" - Equipe : ");
-#endif
+	team = lectureEquipe();
 	if (team == EQUIPE_JAUNE) {
-#ifdef DEBUG_MODE
-		Serial.println("JAUNE");
-#endif
-		//robotManager.setPosition(Conv.mmToPulse(2850), Conv.mmToPulse(250), Conv.degToPulse(135));
+		robotManager.setPosition(Conv.mmToPulse(2850), Conv.mmToPulse(250), Conv.degToPulse(135));
 	} else {
-#ifdef DEBUG_MODE
-		Serial.println("VERTE");
-#endif
-		//robotManager.setPosition(Conv.mmToPulse(150), Conv.mmToPulse(250), Conv.degToPulse(45));
+		robotManager.setPosition(Conv.mmToPulse(150), Conv.mmToPulse(250), Conv.degToPulse(45));
 	}
 
 	// Pour tester //
 	// TODO : A supprimer
-	robotManager.setPosition(0, 0, Conv.degToPulse(90));
-	//robotManager.setPosition(Conv.mmToPulse(300), Conv.mmToPulse(300), Conv.degToPulse(90));
+	robotManager.setPosition(Conv.mmToPulse(1090), Conv.mmToPulse(35), Conv.degToPulse(90));
 
 #ifdef DEBUG_MODE
 	Serial.println(" == DEBUT DU MATCH ==");
@@ -347,9 +350,14 @@ int main(void) {
 
 		// Gestion du temps
 		t = millis();
+
+		// Affichage des informations de base
 		lcd.clearDisplay();
 		lcd.setCursor(0,0);
 		lcd.print("Time : ");lcd.print((t - startMatch) / 1000);lcd.println(" s");
+		lcd.print("X : ");lcd.println(Conv.pulseToMm(robotManager.getPosition().getX()));
+		lcd.print("Y : ");lcd.println(Conv.pulseToMm(robotManager.getPosition().getY()));
+		lcd.print("A : ");lcd.println(Conv.pulseToDeg(robotManager.getPosition().getAngle()));
 		lcd.display();
 	} while(t - startMatch <= TPS_MATCH);
 
@@ -377,9 +385,11 @@ void matchLoop() {
 	robotManager.process();
 }
 
+// Gestion basique de la stratégie.
+// Chemin prédéfinie
 void nextEtape(){
-	switch (gestEtapes) {
-	// Pour tester les valeurs de convertions
+	// Etapes >= 0 & < 100 : Cycle normal
+	// Etapes >= 100 : Evittement
 	case 0 :
 		robotManager.setVitesse(200.0, 200.0);
 		//robotManager.avanceMM(10000);
@@ -441,19 +451,35 @@ void heartBeat() {
 	heartTime = millis();
 	if (heartTime - heartTimePrec > 1000) {
 		heartTimePrec = heartTime;
+
+		// Clignotement de la LED embarqué
 		digitalWrite(LED_BUILTIN, (heart) ? HIGH : LOW);
+
+		// Clignotement de la couleur de l'équipe
+		if (heart) {
+			if (team == EQUIPE_JAUNE) {
+				analogWrite(PWM_R, 255);
+				analogWrite(PWM_G, 255);
+				analogWrite(PWM_B, 0);
+			} else {
+				analogWrite(PWM_R, 0);
+				analogWrite(PWM_G, 255);
+				analogWrite(PWM_B, 0);
+			}
+		} else {
+			analogWrite(PWM_R, 0);
+			analogWrite(PWM_G, 0);
+			analogWrite(PWM_B, 0);
+		}
 		heart = !heart;
 	}
 }
 
 /*
- * Méthode pour placer les bras à la maison
+ * Lecture de l'équipe selectioné
  */
-void servosHome() {
-	servoManager.setPosition(SERVO_STAB, STAB_BAS);
-	servoManager.setPosition(SERVO_GP2D, GP2D_GARAGE);
-	servoManager.setPosition(SERVO_TAPIS_BAS, TAPIS_BAS_FERME);
-	servoManager.setPosition(SERVO_TAPIS_HAUT, TAPIS_HAUT_FERME);
+boolean lectureEquipe() {
+	return (analogRead(EQUIPE) > 128) ? EQUIPE_JAUNE : EQUIPE_VERTE;
 }
 
 /*
