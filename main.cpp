@@ -150,7 +150,7 @@ void setup() {
 #ifdef DEBUG_MODE
 	motorsPropulsion.printVersion();
 #endif
-	motorsPropulsion.assignMotors(ASSIGN_MOTOR_1, ASSIGN_MOTOR_2);
+	motorsPropulsion.assignMotors(LEFT_MOTOR, RIGHT_MOTOR);
 
 	// --------- //
 	// Encodeurs //

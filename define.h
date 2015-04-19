@@ -12,11 +12,11 @@
 
 #define DEBUG_MODE
 
-#define TPS_MATCH                   239800 // 89,8 sec pour palier au pb de réaction du bonhomme
-#define END_TOUT					240000 // 90 sec c'est vraiment la fin de tout
+#define TPS_MATCH                   89800 // 89,8 sec pour palier au pb de réaction du bonhomme
+#define END_TOUT					90000 // 90 sec c'est vraiment la fin de tout
 
-#define EQUIPE_VERTE				1
-#define EQUIPE_JAUNE				0
+#define EQUIPE_VERTE				true
+#define EQUIPE_JAUNE				false
 
 // ---------------------- //
 // Adresse des cartes I2C //
@@ -37,6 +37,13 @@
 // --------------------------------- //
 
 #define TIME_ASSERV_MS				10
+
+// -------------------------------- //
+// Configuration moteurs propulsion //
+// -------------------------------- //
+
+#define LEFT_MOTOR					ASSIGN_MOTOR_1
+#define RIGHT_MOTOR					ASSIGN_MOTOR_2
 
 // ------------------------------- //
 // Configuration des servo moteurs //
