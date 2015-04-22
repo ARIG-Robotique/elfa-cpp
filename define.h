@@ -10,7 +10,7 @@
 
 #define VERSION						1
 
-#define DEBUG_MODE
+//#define MAIN_DEBUG_MODE
 
 #define TPS_MATCH                   89800 // 89,8 sec pour palier au pb de réaction du bonhomme
 #define END_TOUT					90000 // 90 sec c'est vraiment la fin de tout

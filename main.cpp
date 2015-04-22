@@ -16,10 +16,8 @@
 #include <adafruit/Adafruit_GFX.h>
 #include <adafruit/Adafruit_SSD1306.h>
 
-// 10 DOF (Juste Gyroscope)
+// 10 DOF
 #include <adafruit/Adafruit_10DOF.h>
-#include <adafruit/Adafruit_Sensor.h>
-#include <adafruit/Adafruit_L3GD20_U.h>
 
 #include "define.h"
 
@@ -50,6 +48,7 @@ Pid pidBequille = Pid();
 
 // Classe de gestion du robot (asserv, odométrie, pathfinding, evittement, etc...)
 RobotManager robotManager = RobotManager();
+Adafruit_10DOF dof = Adafruit_10DOF();
 
 // I2C Boards
 SD21 servoManager = SD21(SD21_ADD_BOARD);
@@ -59,7 +58,8 @@ Adafruit_SSD1306 lcd = Adafruit_SSD1306(OLED_RST);
 BoardPCF8574 ioGyro = BoardPCF8574("Gyro", PCF_GYRO_ADD_BOARD);
 BoardPCF8574 ioCapteurs = BoardPCF8574("Num", PCF_CAPTEURS_ADD_BOARD);
 BoardI2CADC ioGp2D = BoardI2CADC(GP2D_ADD_BOARD);
-Adafruit_L3GD20_Unified gyro = Adafruit_L3GD20_Unified(20);
+Adafruit_LSM303_Accel_Unified accel = Adafruit_LSM303_Accel_Unified(30301);
+Adafruit_LSM303_Mag_Unified mag = Adafruit_LSM303_Mag_Unified(30302);
 
 // Gestion des étapes
 int gestEtapes;
@@ -84,8 +84,8 @@ const double kpO = 0.50;
 const double kiO = 0.25;
 const double kdO = 1.00;
 
-const double kpB = 20.00;
-const double kiB = 0.00;
+const double kpB = 2.00;
+const double kiB = 0.20;
 const double kdB = 0.00;
 
 // Constantes d'ajustement pour les roues folles
@@ -95,11 +95,12 @@ const double coefRoueGauche = 1.00;
 // Variable pour l'équipe
 boolean team;
 
-// Evennement du gyroscope
-double gyroOffset = 0;
-double gyroInputX = 0;
-double gyroOutputX = 0;
-sensors_event_t dofEvt;
+// Evennement pour l'orientation sur les marches
+double rollCons;
+double rollOutput;
+sensors_event_t accelEvt;
+sensors_event_t magEvt;
+sensors_vec_t orientation;
 
 // ------------------------------------------------------- //
 // ------------------------- MAIN ------------------------ //
@@ -110,7 +111,7 @@ void setup() {
 	// ------------------------------------------------------------- //
 	// Initialisation du port série en debug seulement (cf define.h) //
 	// ------------------------------------------------------------- //
-#ifdef DEBUG_MODE
+#ifdef MAIN_DEBUG_MODE
 	Serial.begin(115200);
 	Serial.println(" == Initialisation robot Elfa ==");
 #endif
@@ -119,7 +120,7 @@ void setup() {
 	// Config I2C //
 	// ---------- //
 	Wire.begin();
-#ifdef DEBUG_MODE
+#ifdef MAIN_DEBUG_MODE
 	Serial.println(" - I2C [OK] (Master)");
 #endif
 	i2cUtils.pullup(false);
@@ -139,19 +140,14 @@ void setup() {
 	// Affichage du logo
 	delay(2000);
 
-#ifdef DEBUG_MODE
-	lcd.dim(true);
-#else
-	lcd.dim(false);
-#endif
-
 	byte nbDevices = i2cUtils.scan();
 	if (nbDevices != NB_I2C_DEVICE) {
-#ifdef DEBUG_MODE
+#ifdef MAIN_DEBUG_MODE
 		Serial.println(" [ ERROR ] Il manque des périphériques I2C. Tous est bien branché ?");
 #endif
 		lcd.clearDisplay();
 		lcd.setTextSize(2);
+		lcd.println("    /!\\");
 		lcd.println("Erreur I2C");
 		lcd.print(nbDevices);lcd.print(" / ");lcd.println(NB_I2C_DEVICE);
 		lcd.display();
@@ -160,49 +156,57 @@ void setup() {
 		while(1 == 1);
 	}
 
-	// --------- //
-	// Gyroscope //
-	// --------- //
+	// ------------------------------------ //
+	// Gyroscope / Accelerometre / Pression //
+	// ------------------------------------ //
 
-	if (!gyro.begin()) {
-#ifdef DEBUG_MODE
-		Serial.println(" [ ERROR ] Oops, j'ai perdu mon Gyroscope (L3GD20)");
+	if (!accel.begin() || !mag.begin()) {
+#ifdef MAIN_DEBUG_MODE
+		Serial.println(" [ ERROR ] Oops, j'ai perdu mon Accelerometre et Magnetometre");
 #endif
 		lcd.clearDisplay();
-		lcd.setTextSize(2);
-		lcd.println("Erreur");
-		lcd.println("Gyroscope");
+		lcd.setTextSize(1);
+		lcd.println("   /!\\");
+		lcd.println("  Erreur");
+		lcd.println("Accel, Mag");
 		lcd.display();
 
 		// Il manque des périphérique on bloque tout
 		while(1 == 1);
 	}
 
-#ifdef DEBUG_MODE
+#ifdef MAIN_DEBUG_MODE
 	sensor_t sensor;
-	gyro.getSensor(&sensor);
-	Serial.println(F(" -> GYROSCOPE"));
-	Serial.print  (F("    * Sensor    :   ")); Serial.println(sensor.name);
-	Serial.print  (F("    * Driver Ver:   ")); Serial.println(sensor.version);
-	Serial.print  (F("    * Unique ID :   ")); Serial.println(sensor.sensor_id);
-	Serial.print  (F("    * Max Value :   ")); Serial.print(sensor.max_value); Serial.println(F(" rad/s"));
-	Serial.print  (F("    * Min Value :   ")); Serial.print(sensor.min_value); Serial.println(F(" rad/s"));
-	Serial.print  (F("    * Resolution:   ")); Serial.print(sensor.resolution); Serial.println(F(" rad/s"));
+
+	accel.getSensor(&sensor);
+	Serial.println(F(" -> ACCELEROMETER"));
+	Serial.print  (F("    * Sensor    : ")); Serial.println(sensor.name);
+	Serial.print  (F("    * Driver Ver: ")); Serial.println(sensor.version);
+	Serial.print  (F("    * Unique ID : ")); Serial.println(sensor.sensor_id);
+	Serial.print  (F("    * Max Value : ")); Serial.print(sensor.max_value); Serial.println(F(" m/s^2"));
+	Serial.print  (F("    * Min Value : ")); Serial.print(sensor.min_value); Serial.println(F(" m/s^2"));
+	Serial.print  (F("    * Resolution: ")); Serial.print(sensor.resolution); Serial.println(F(" m/s^2"));
+
+	mag.getSensor(&sensor);
+	Serial.println(F(" -> MAGNETOMETER"));
+	Serial.print  (F("    * Sensor    : ")); Serial.println(sensor.name);
+	Serial.print  (F("    * Driver Ver: ")); Serial.println(sensor.version);
+	Serial.print  (F("    * Unique ID : ")); Serial.println(sensor.sensor_id);
+	Serial.print  (F("    * Max Value : ")); Serial.print(sensor.max_value); Serial.println(F(" uT"));
+	Serial.print  (F("    * Min Value : ")); Serial.print(sensor.min_value); Serial.println(F(" uT"));
+	Serial.print  (F("    * Resolution: ")); Serial.print(sensor.resolution); Serial.println(F(" uT"));
 #endif
 
 	// ------------- //
 	// Servo manager //
 	// ------------- //
-#ifdef DEBUG_MODE
+#ifdef MAIN_DEBUG_MODE
 	//servoManager.printVersion();
 #endif
 
 	// --------------------- //
 	// Moteurs de propulsion //
 	// --------------------- //
-#ifdef DEBUG_MODE
-	//motorsPropulsion.printVersion();
-#endif
 	motorsPropulsion.assignMotors(LEFT_MOTOR, RIGHT_MOTOR);
 
 	// --------- //
@@ -223,7 +227,7 @@ void setup() {
 	robotManager.setRampDec(rampDecDistance, rampDecOrientation);
 	robotManager.init();
 
-#ifdef DEBUG_MODE
+#ifdef MAIN_DEBUG_MODE
 	Serial.println(" - Robot manager [OK]");
 #endif
 
@@ -234,7 +238,7 @@ void setup() {
 	pidBequille.setTunings(kpB, kiB, kdB);
 	pidBequille.reset();
 
-#ifdef DEBUG_MODE
+#ifdef MAIN_DEBUG_MODE
 	Serial.println(" - Config bequille [OK]");
 #endif
 
@@ -247,7 +251,7 @@ void setup() {
 	pinMode(PIN_IRQ_3_4, INPUT);
 	pinMode(PIN_IRQ_5, INPUT);
 	pinMode(PIN_IRQ_6, INPUT);
-#ifdef DEBUG_MODE
+#ifdef MAIN_DEBUG_MODE
 	Serial.println(" - Inputs numérique AVR [OK]");
 #endif
 
@@ -255,7 +259,7 @@ void setup() {
 	pinMode(EQUIPE, INPUT);
 	pinMode(CURRENT_MOTA, INPUT);
 	pinMode(CURRENT_MOTB, INPUT);
-#ifdef DEBUG_MODE
+#ifdef MAIN_DEBUG_MODE
 	Serial.println(" - Inputs analogique AVR [OK]");
 #endif
 
@@ -264,7 +268,7 @@ void setup() {
 	pinMode(OLED_RST, OUTPUT);
 	pinMode(DIR_MOTA, OUTPUT);
 	pinMode(DIR_MOTB, OUTPUT);
-#ifdef DEBUG_MODE
+#ifdef MAIN_DEBUG_MODE
 	Serial.println(" - Outputs numérique AVR [OK]");
 #endif
 
@@ -274,7 +278,7 @@ void setup() {
 	pinMode(PWM_B, OUTPUT);
 	pinMode(PWM_MOTA, OUTPUT);
 	pinMode(PWM_MOTB, OUTPUT);
-#ifdef DEBUG_MODE
+#ifdef MAIN_DEBUG_MODE
 	Serial.println(" - Outputs analogique (PWM) AVR [OK]");
 #endif
 
@@ -308,7 +312,7 @@ int main(void) {
 
 	// Récupération de la couleur de l'équipe
 	team = lectureEquipe();
-#ifdef DEBUG_MODE
+#ifdef MAIN_DEBUG_MODE
 	// Affichage de la couleur de l'équipe
 	Serial.print(" -> Equipe : ");
 	Serial.println((team == EQUIPE_JAUNE) ? "JAUNE" : "VERTE");
@@ -325,7 +329,7 @@ int main(void) {
 
 	// TODO Contrôle AU
 
-#ifdef DEBUG_MODE
+#ifdef MAIN_DEBUG_MODE
 		Serial.println(" -> Positionnement de la béquille");
 #endif
 
@@ -355,7 +359,7 @@ int main(void) {
 		lcd.println("/!\\ Manque tirette !");
 		lcd.display();
 
-#ifdef DEBUG_MODE
+#ifdef MAIN_DEBUG_MODE
 		Serial.println(" -> /!\\ La tirette n'est pas presente il faut d'abord la mettre !");
 #endif
 
@@ -364,7 +368,7 @@ int main(void) {
 	}
 
 	// Attente du lancement du match.
-#ifdef DEBUG_MODE
+#ifdef MAIN_DEBUG_MODE
 	Serial.println(" -> Attente depart tirette ...");
 #endif
 
@@ -375,7 +379,7 @@ int main(void) {
 
 	while(ioCapteurs.readCapteurValue(SW_TIRETTE)) {
 		heartBeat();
-#ifdef DEBUG_MODE
+#ifdef MAIN_DEBUG_MODE
 		if (Serial.available()) {
 			if (Serial.read() == 's') { // La touche s de la liaison série est égal à la tirette
 				break;
@@ -402,13 +406,17 @@ int main(void) {
 	// TODO : A supprimer
 	robotManager.setPosition(Conv.mmToPulse(1090), Conv.mmToPulse(35), Conv.degToPulse(90));
 
-#ifdef DEBUG_MODE
+#ifdef MAIN_DEBUG_MODE
 	Serial.println(" == DEBUT DU MATCH ==");
 
 	// En tête de log
 	//Serial.println("#Gauche;Droit;X;Y;A;Type;Cons. Dist.;Cons. Orient.;PID Dist. setPoint;PID Dist. In;PID Dist. sumErr;PID Dist. Out;PID O setPoint;PID O In;PID O sumErr;PID O Out;Approche;Atteint");
-	Serial.println("#Input Gyro X;Error;Output PID;Courant");
+	//Serial.println("#Cons. Roll;Input Roll;Error;Output PID;Courant");
 #endif
+
+	// On efface l'écran
+	lcd.clearDisplay();
+	lcd.display();
 
 	do {
 		heartBeat();
@@ -417,6 +425,7 @@ int main(void) {
 		// Gestion du temps
 		t = millis();
 
+#ifdef MAIN_DEBUG_MODE
 		// Affichage des informations de base
 		lcd.clearDisplay();
 		lcd.setCursor(0,0);
@@ -425,6 +434,7 @@ int main(void) {
 		lcd.print("Y : ");lcd.println(Conv.pulseToMm(robotManager.getPosition().getY()));
 		lcd.print("A : ");lcd.println(Conv.pulseToDeg(robotManager.getPosition().getAngle()));
 		lcd.display();
+#endif
 	} while(t - startMatch <= TPS_MATCH);
 
 	// Plus de mouvement on arrete les moteurs.
@@ -448,17 +458,19 @@ void matchLoop() {
 		nextEtape();
 
 		// On est aligné devant les marches.
-		if (gestEtapes == 0) {
-		//if (gestEtapes == 4) {
-			// Récupération de la valeur d'offset du Gyro
-			gyro.getEvent(&dofEvt);
-			gyroOffset = dofEvt.gyro.x * -1;
+		//if (gestEtapes == 1) {
+		if (gestEtapes == 4) {
+			// Récupération de la valeur de consigne
 			pidBequille.reset();
+			accel.getEvent(&accelEvt);
+			mag.getEvent(&magEvt);
+			dof.fusionGetOrientation(&accelEvt, &magEvt, &orientation);
+			rollCons = orientation.roll;
 
 			// Stabilisation relaché
 			servoManager.setPosition(SERVO_STAB, STAB_HAUT);
-			gestEtapes = 1;
-			//gestEtapes = 5;
+			//gestEtapes = 2;
+			gestEtapes = 5;
 		}
 	}
 
@@ -466,25 +478,26 @@ void matchLoop() {
 	robotManager.process();
 
 	// Gestion de l'asservissement gyroscopique
-	if (gestEtapes >= 1) {
-	//if (gestEtapes >= 5) {
-		gyro.getEvent(&dofEvt);
-		gyroInputX += gyroOffset + dofEvt.gyro.x;
-		gyroOutputX = pidBequille.compute(0, gyroInputX);
-		if (ioCapteurs.readCapteurValue(SW_BEQUILLE) && gyroOutputX < 0) {
+	//if (gestEtapes >= 2) {
+	if (gestEtapes >= 5) {
+		accel.getEvent(&accelEvt);
+		mag.getEvent(&magEvt);
+		dof.fusionGetOrientation(&accelEvt, &magEvt, &orientation);
+		rollOutput = pidBequille.compute(rollCons, orientation.roll);
+		if (ioCapteurs.readCapteurValue(SW_BEQUILLE) && rollOutput < 0) {
 			// On ne fait rien
 			pidBequille.reset();
 			motBequille.stop();
 		} else {
-			// On stabilise
-			motBequille.cmd(gyroOutputX);
+			motBequille.cmd(rollOutput);
 		}
 
-#ifdef DEBUG_MODE
+#ifdef MAIN_DEBUG_MODE
 		double e = pidBequille.getError();
-		Serial.print(gyroInputX);
+		Serial.print(rollCons);
+		Serial.print(";");Serial.print(orientation.roll);
 		Serial.print(";");Serial.print(e);
-		Serial.print(";");Serial.print(gyroOutputX);
+		Serial.print(";");Serial.print(rollOutput);
 		Serial.print(";");Serial.println(motBequille.current());
 #endif
 	}
@@ -495,9 +508,11 @@ void matchLoop() {
 void nextEtape(){
 	// Etapes >= 0 & < 100 : Cycle normal
 	// Etapes >= 100 : Evittement
-	/*switch (gestEtapes) {
+	switch (gestEtapes) {
 	case 0 :
-		robotManager.setVitesse(400.0, 500.0);
+		robotManager.setVitesse(500.0, 500.0);
+		//robotManager.avanceMM(730.0);
+		//robotManager.setVitesse(400.0, 500.0);
 		robotManager.gotoPointMM(1050.0, 1263.0, false);
 		gestEtapes++;
 		break;
@@ -518,7 +533,7 @@ void nextEtape(){
 		break;
 	case 5 : // Montée des marches
 		robotManager.setVitesse(200.0, 500.0);
-		robotManager.avanceMM(1000.0);
+		robotManager.avanceMM(730.0);
 		gestEtapes++;
 		break;
 	case 6 :
@@ -535,14 +550,14 @@ void nextEtape(){
 			gestEtapes++;
 		}
 		break;
-	}*/
+	}
 }
 
 // ----------------------------------- //
 // Méthode appelé pour la fin du match //
 // ----------------------------------- //
 void endMatch() {
-#ifdef DEBUG_MODE
+#ifdef MAIN_DEBUG_MODE
 	Serial.println(" == FIN MATCH ==");
 #endif
 
