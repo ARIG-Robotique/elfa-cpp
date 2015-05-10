@@ -21,7 +21,7 @@
 // ---------------------- //
 // Adresse des cartes I2C //
 // ---------------------- //
-#define NB_I2C_DEVICE				12
+#define NB_I2C_DEVICE				11
 
 #define OLED_LCD_ADD_BOARD			0x3C
 #define PCF_GYRO_ADD_BOARD			0x3E

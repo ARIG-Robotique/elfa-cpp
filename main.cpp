@@ -5,7 +5,7 @@
 #include <robot/system/capteurs/BoardPCF8574.h>
 #include <robot/system/capteurs/BoardI2CADC.h>
 #include <robot/system/motors/PWMMotor.h>
-#include <robot/system/motors/MD22.h>
+#include <robot/system/motors/SD21Motors.h>
 #include <robot/system/servos/SD21.h>
 #include <robot/RobotManager.h>
 #include <utils/Convertion.h>
@@ -52,7 +52,7 @@ Adafruit_10DOF dof = Adafruit_10DOF();
 
 // I2C Boards
 SD21 servoManager = SD21(SD21_ADD_BOARD);
-MD22 motorsPropulsion = MD22(MD22_ADD_BOARD, MODE_1, 0);
+SD21Motors motorsPropulsion = SD21Motors(SD21_ADD_BOARD);
 ARIGEncodeurs encodeurs = ARIGEncodeurs(ENCODEUR_GAUCHE_BOARD, ENCODEUR_DROIT_BOARD);
 Adafruit_SSD1306 lcd = Adafruit_SSD1306(OLED_RST);
 BoardPCF8574 ioGyro = BoardPCF8574("Gyro", PCF_GYRO_ADD_BOARD);
@@ -67,11 +67,11 @@ int gestEtapes;
 // ------------------------ //
 // Configuration des rampes //
 // ------------------------ //
-const double rampAccDistance = 800.0; // en mm/s2
-const double rampDecDistance = 800.0; // en mm/s2
+const double rampAccDistance = 300.0; // en mm/s2
+const double rampDecDistance = 300.0; // en mm/s2
 
-const double rampAccOrientation = 800.0; // en mm/s2
-const double rampDecOrientation = 800.0; // en mm/s2
+const double rampAccOrientation = 300.0; // en mm/s2
+const double rampDecOrientation = 300.0; // en mm/s2
 
 // -------------- //
 // Parametres PID //
@@ -304,7 +304,8 @@ void setup() {
 
 // Point d'entrée du programme
 int main(void) {
-	// Initialisation du SDK Arduino. A réécrire si on veut customiser tout le bouzin.
+	// Initialisation du SDK Arduino.
+	// A réécrire si on veut customiser tout le bouzin.
 	init();
 
 	// Initialisation de l'application
@@ -344,7 +345,7 @@ int main(void) {
 	motBequille.cmd(200);
 	while(ioCapteurs.readCapteurValue(SW_BEQUILLE));
 	motBequille.stop();
-	delay(500);
+	delay(1000);
 
 	// on remonte jusqu'au fin de course
 	Serial.println("Monte");
@@ -425,7 +426,6 @@ int main(void) {
 		// Gestion du temps
 		t = millis();
 
-#ifdef MAIN_DEBUG_MODE
 		// Affichage des informations de base
 		lcd.clearDisplay();
 		lcd.setCursor(0,0);
@@ -434,7 +434,6 @@ int main(void) {
 		lcd.print("Y : ");lcd.println(Conv.pulseToMm(robotManager.getPosition().getY()));
 		lcd.print("A : ");lcd.println(Conv.pulseToDeg(robotManager.getPosition().getAngle()));
 		lcd.display();
-#endif
 	} while(t - startMatch <= TPS_MATCH);
 
 	// Plus de mouvement on arrete les moteurs.
@@ -491,7 +490,6 @@ void matchLoop() {
 		} else {
 			motBequille.cmd(rollOutput);
 		}
-
 #ifdef MAIN_DEBUG_MODE
 		double e = pidBequille.getError();
 		Serial.print(rollCons);
