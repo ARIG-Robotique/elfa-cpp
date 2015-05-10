@@ -455,22 +455,6 @@ int main(void) {
 void matchLoop() {
 	if(robotManager.getTrajetAtteint() || robotManager.getTrajetEnApproche()) {
 		nextEtape();
-
-		// On est aligné devant les marches.
-		//if (gestEtapes == 1) {
-		if (gestEtapes == 4) {
-			// Récupération de la valeur de consigne
-			pidBequille.reset();
-			accel.getEvent(&accelEvt);
-			mag.getEvent(&magEvt);
-			dof.fusionGetOrientation(&accelEvt, &magEvt, &orientation);
-			rollCons = orientation.roll;
-
-			// Stabilisation relaché
-			servoManager.setPosition(SERVO_STAB, STAB_HAUT);
-			//gestEtapes = 2;
-			gestEtapes = 5;
-		}
 	}
 
 	// Processing de l'asservissement.
@@ -508,46 +492,59 @@ void nextEtape(){
 	// Etapes >= 100 : Evittement
 	switch (gestEtapes) {
 	case 0 :
-		robotManager.setVitesse(500.0, 500.0);
-		//robotManager.avanceMM(730.0);
-		//robotManager.setVitesse(400.0, 500.0);
+		robotManager.setVitesse(400.0, 400.0);
 		robotManager.gotoPointMM(1050.0, 1263.0, false);
 		gestEtapes++;
 		break;
+
 	case 1 :
-		robotManager.setVitesse(400.0, 500.0);
-		robotManager.gotoPointMM(1050.0, 1513.0, false);
+		robotManager.setVitesse(400.0, 400.0);
+		robotManager.gotoPointMM(1050.0, 1400.0, false);
 		gestEtapes++;
 		break;
+
 	case 2 : // Devant les marches
-		robotManager.setVitesse(100.0, 500.0);
+		robotManager.setVitesse(400.0, 400.0);
 		robotManager.gotoPointMM(750.0, 1533.0, true);
 		gestEtapes++;
 		break;
+
 	case 3 :
-		robotManager.setVitesse(500.0, 500.0);
+		robotManager.setVitesse(400.0, 400.0);
 		robotManager.gotoOrientationDeg(180);
 		gestEtapes++;
 		break;
-	case 5 : // Montée des marches
-		robotManager.setVitesse(200.0, 500.0);
-		robotManager.avanceMM(730.0);
+
+	case 4 :
+		// Récupération de la valeur de consigne
+		pidBequille.reset();
+		accel.getEvent(&accelEvt);
+		mag.getEvent(&magEvt);
+		dof.fusionGetOrientation(&accelEvt, &magEvt, &orientation);
+		rollCons = orientation.roll;
+
+		// Stabilisation relaché
+		servoManager.setPosition(SERVO_STAB, STAB_HAUT);
+
+		// Montée des marches
+		robotManager.setVitesse(100.0, 400.0);
+		robotManager.avanceMM(1460);
 		gestEtapes++;
 		break;
-	case 6 :
+	/*case 5 :
 		// Bas des marches tans que l'on as le capteur bequille
 		if (!ioCapteurs.readCapteurValue(SW_BEQUILLE)) {
 			// Fin de course perdu, l'asserv commence
 			gestEtapes++;
 		}
 		break;
-	case 7 :
-		// Dès que l'on récupère le fin de cours on stop tout
+	case 6 :
+		// Dès que l'on récupère le fin de course on stop tout
 		if (ioCapteurs.readCapteurValue(SW_BEQUILLE)) {
 			robotManager.avanceMM(0);
 			gestEtapes++;
 		}
-		break;
+		break;*/
 	}
 }
 
