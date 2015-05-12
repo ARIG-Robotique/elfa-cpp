@@ -107,10 +107,10 @@
 #define SW_TIRETTE     		1
 
 // Input Analogique
-#define GP2D_DROIT_COTE		0
+#define GP2D_DROIT_COTE		2
 #define GP2D_DROIT_FRONT	1
-#define GP2D_GAUCHE_FRONT	2
-#define GP2D_GAUCHE_COTE	3
+#define GP2D_GAUCHE_FRONT	0
+#define GP2D_GAUCHE_COTE	6
 
 // Interrupts
 #define ISR_1_2        		0

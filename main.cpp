@@ -29,8 +29,13 @@ void nextEtape();
 void heartBeat();
 
 // Prototype des fonctions business
+//float read_gp2d12_range(int reading);
 boolean hasObstacle();
 boolean lectureEquipe();
+int averageLatGauche(int newValue);
+int averageGauche(int newValue);
+int averageDroit(int newValue);
+int averageLatDroit(int newValue);
 
 // Heartbeat variables
 int heartTimePrec;
@@ -67,11 +72,11 @@ int gestEtapes;
 // ------------------------ //
 // Configuration des rampes //
 // ------------------------ //
-const double rampAccDistance = 300.0; // en mm/s2
-const double rampDecDistance = 300.0; // en mm/s2
+const double rampAccDistance = 800.0; // en mm/s2
+const double rampDecDistance = 800.0; // en mm/s2
 
-const double rampAccOrientation = 300.0; // en mm/s2
-const double rampDecOrientation = 300.0; // en mm/s2
+const double rampAccOrientation = 1000.0; // en mm/s2
+const double rampDecOrientation = 1000.0; // en mm/s2
 
 // -------------- //
 // Parametres PID //
@@ -84,8 +89,8 @@ const double kpO = 0.50;
 const double kiO = 0.25;
 const double kdO = 1.00;
 
-const double kpB = 2.00;
-const double kiB = 0.20;
+const double kpB = 40.00;
+const double kiB = 2.00;
 const double kdB = 0.00;
 
 // Constantes d'ajustement pour les roues folles
@@ -94,6 +99,13 @@ const double coefRoueGauche = 1.00;
 
 // Variable pour l'équipe
 boolean team;
+
+// Variables lectures GP
+const int nbValues = 50;
+long valuesLatGauche[nbValues] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+long valuesGauche[nbValues] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+long valuesDroit[nbValues] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+long valuesLatDroit[nbValues] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 // Evennement pour l'orientation sur les marches
 double rollCons;
@@ -197,6 +209,11 @@ void setup() {
 	Serial.print  (F("    * Resolution: ")); Serial.print(sensor.resolution); Serial.println(F(" uT"));
 #endif
 
+	// Init value Accel + Mag
+	accel.getEvent(&accelEvt);
+	mag.getEvent(&magEvt);
+	dof.fusionGetOrientation(&accelEvt, &magEvt, &orientation);
+
 	// ------------- //
 	// Servo manager //
 	// ------------- //
@@ -298,7 +315,13 @@ void setup() {
 	servoManager.setPositionAndSpeed(SERVO_TAPIS_BAS, SPEED_TAPIS, TAPIS_BAS_FERME);
 	servoManager.setPositionAndSpeed(SERVO_TAPIS_HAUT, SPEED_TAPIS, TAPIS_HAUT_FERME);
 
+	// Initialisation des valeurs GP
+	for (int i = 0 ; i < nbValues ; i++) {
+		hasObstacle();
+	}
+
 	// Init Gestion Etapes
+	// TODO : A changer
 	gestEtapes = 0;
 }
 
@@ -341,14 +364,18 @@ int main(void) {
 	lcd.display();
 
 	// Descente jusqu'a perdre le fin de course
+#ifdef MAIN_DEBUG_MODE
 	Serial.println("Descente");
+#endif
 	motBequille.cmd(200);
 	while(ioCapteurs.readCapteurValue(SW_BEQUILLE));
 	motBequille.stop();
 	delay(1000);
 
 	// on remonte jusqu'au fin de course
+#ifdef MAIN_DEBUG_MODE
 	Serial.println("Monte");
+#endif
 	motBequille.cmd(-200);
 	while(!ioCapteurs.readCapteurValue(SW_BEQUILLE));
 	motBequille.stop();
@@ -357,7 +384,9 @@ int main(void) {
 	if (!ioCapteurs.readCapteurValue(SW_TIRETTE)) {
 		lcd.clearDisplay();
 		lcd.setCursor(0, 0);
-		lcd.println("/!\\ Manque tirette !");
+		lcd.println("/!\\/!\\/!\\/!\\/!\\/!\\");
+		lcd.println("    Manque tirette");
+		lcd.println("/!\\/!\\/!\\/!\\/!\\/!\\");
 		lcd.display();
 
 #ifdef MAIN_DEBUG_MODE
@@ -374,6 +403,7 @@ int main(void) {
 #endif
 
 	lcd.clearDisplay();
+	lcd.setCursor(0, 0);
 	lcd.println("Attente depart");
 	lcd.println("tirette");
 	lcd.display();
@@ -395,23 +425,23 @@ int main(void) {
 
 	// Reset des valeurs codeurs lors des différents mouvements de positionnement
 	robotManager.resetEncodeurs();
+	servoManager.setPosition(SERVO_GP2D, GP2D_MATCH);
 
 	team = lectureEquipe();
 	if (team == EQUIPE_JAUNE) {
-		robotManager.setPosition(Conv.mmToPulse(2850), Conv.mmToPulse(250), Conv.degToPulse(135));
+		robotManager.setPosition(Conv.mmToPulse(1000), Conv.mmToPulse(165), Conv.degToPulse(90));
 	} else {
-		robotManager.setPosition(Conv.mmToPulse(150), Conv.mmToPulse(250), Conv.degToPulse(45));
+		robotManager.setPosition(Conv.mmToPulse(1000), Conv.mmToPulse(2835), Conv.degToPulse(-90));
 	}
 
-	// Pour tester //
-	// TODO : A supprimer
-	robotManager.setPosition(Conv.mmToPulse(1090), Conv.mmToPulse(35), Conv.degToPulse(90));
+	// FIXME : A supprimer.
+	robotManager.setPosition(Conv.mmToPulse(1000), Conv.mmToPulse(165), Conv.degToPulse(90));
 
 #ifdef MAIN_DEBUG_MODE
 	Serial.println(" == DEBUT DU MATCH ==");
 
 	// En tête de log
-	//Serial.println("#Gauche;Droit;X;Y;A;Type;Cons. Dist.;Cons. Orient.;PID Dist. setPoint;PID Dist. In;PID Dist. sumErr;PID Dist. Out;PID O setPoint;PID O In;PID O sumErr;PID O Out;Approche;Atteint");
+	Serial.println("#Gauche;Droit;X;Y;A;Type;Cons. Dist.;Cons. Orient.;PID Dist. setPoint;PID Dist. In;PID Dist. sumErr;PID Dist. Out;PID O setPoint;PID O In;PID O sumErr;PID O Out;Approche;Atteint");
 	//Serial.println("#Cons. Roll;Input Roll;Error;Output PID;Courant");
 #endif
 
@@ -429,10 +459,10 @@ int main(void) {
 		// Affichage des informations de base
 		lcd.clearDisplay();
 		lcd.setCursor(0,0);
-		lcd.print("Time : ");lcd.print((t - startMatch) / 1000);lcd.println(" s");
-		lcd.print("X : ");lcd.println(Conv.pulseToMm(robotManager.getPosition().getX()));
-		lcd.print("Y : ");lcd.println(Conv.pulseToMm(robotManager.getPosition().getY()));
-		lcd.print("A : ");lcd.println(Conv.pulseToDeg(robotManager.getPosition().getAngle()));
+		lcd.print("T ");lcd.print((t - startMatch) / 1000);lcd.print(" E ");lcd.println(gestEtapes - 1);
+		lcd.print("X ");lcd.print((int) Conv.pulseToMm(robotManager.getPosition().getX()));lcd.print(" Y ");lcd.print((int) Conv.pulseToMm(robotManager.getPosition().getY()));lcd.print(" A ");lcd.println((int) Conv.pulseToDeg(robotManager.getPosition().getAngle()));
+		lcd.print("Tap ");lcd.print(robotManager.getTrajetEnApproche());lcd.print(" Tat ");lcd.println(robotManager.getTrajetAtteint());
+		lcd.print("Roll ");lcd.println(orientation.roll);
 		lcd.display();
 	} while(t - startMatch <= TPS_MATCH);
 
@@ -461,8 +491,7 @@ void matchLoop() {
 	robotManager.process();
 
 	// Gestion de l'asservissement gyroscopique
-	//if (gestEtapes >= 2) {
-	if (gestEtapes >= 5) {
+	if (gestEtapes >= 4) {
 		accel.getEvent(&accelEvt);
 		mag.getEvent(&magEvt);
 		dof.fusionGetOrientation(&accelEvt, &magEvt, &orientation);
@@ -492,30 +521,27 @@ void nextEtape(){
 	// Etapes >= 100 : Evittement
 	switch (gestEtapes) {
 	case 0 :
-		robotManager.setVitesse(400.0, 400.0);
-		robotManager.gotoPointMM(1050.0, 1263.0, false);
+		// Point de passage à la con
+		robotManager.setVitesse(600.0, 800.0);
+		robotManager.gotoPointMM(1000, 1000, false);
 		gestEtapes++;
 		break;
 
 	case 1 :
-		robotManager.setVitesse(400.0, 400.0);
-		robotManager.gotoPointMM(1050.0, 1400.0, false);
+		// Devant les marches
+		robotManager.setVitesse(600.0, 800.0);
+		robotManager.gotoPointMM(730, 1335.0, true);
 		gestEtapes++;
 		break;
 
-	case 2 : // Devant les marches
-		robotManager.setVitesse(400.0, 400.0);
-		robotManager.gotoPointMM(750.0, 1533.0, true);
-		gestEtapes++;
-		break;
-
-	case 3 :
-		robotManager.setVitesse(400.0, 400.0);
+	case 2 :
+		// Orientation face aux marches
+		robotManager.setVitesse(600.0, 800.0);
 		robotManager.gotoOrientationDeg(180);
 		gestEtapes++;
 		break;
 
-	case 4 :
+	case 3 :
 		// Récupération de la valeur de consigne
 		pidBequille.reset();
 		accel.getEvent(&accelEvt);
@@ -527,24 +553,24 @@ void nextEtape(){
 		servoManager.setPosition(SERVO_STAB, STAB_HAUT);
 
 		// Montée des marches
-		robotManager.setVitesse(100.0, 400.0);
-		robotManager.avanceMM(1460);
+		robotManager.setVitesse(200.0, 400.0);
+		robotManager.avanceMM(600);
 		gestEtapes++;
 		break;
-	/*case 5 :
+	case 4 :
 		// Bas des marches tans que l'on as le capteur bequille
 		if (!ioCapteurs.readCapteurValue(SW_BEQUILLE)) {
 			// Fin de course perdu, l'asserv commence
 			gestEtapes++;
 		}
 		break;
-	case 6 :
+	case 5 :
 		// Dès que l'on récupère le fin de course on stop tout
 		if (ioCapteurs.readCapteurValue(SW_BEQUILLE)) {
 			robotManager.avanceMM(0);
 			gestEtapes++;
 		}
-		break;*/
+		break;
 	}
 }
 
@@ -609,31 +635,62 @@ boolean lectureEquipe() {
  * Méthode retournant l'information de présence d'un obstacle (adversaire ???)
  */
 boolean hasObstacle() {
-	return false;
-/*
-	// Juste les deux de devant et les deux de dérriere
-	boolean obstacle = capteurs.readCapteurValue(AVANT_DROIT)
-			|| capteurs.readCapteurValue(AVANT_GAUCHE)
-			|| capteurs.readCapteurValue(ARRIERE_DROIT)
-			|| capteurs.readCapteurValue(ARRIERE_GAUCHE);
 
-	if (isInPresentArea()) {
-		if (team == BLEU) {
-			// Les cadeaux sont a droite
-			obstacle = obstacle || capteurs.readCapteurValue(LATERAL_AVANT_GAUCHE)
-						|| capteurs.readCapteurValue(LATERAL_ARRIERE_GAUCHE);
-		} else if (team == ROUGE) {
-			// Les cadeaux sont a gauche
-			obstacle = obstacle || capteurs.readCapteurValue(LATERAL_AVANT_DROIT)
-						|| capteurs.readCapteurValue(LATERAL_ARRIERE_DROIT);
-		}
-	} else {
-		// Pas dans la zone cadeaux, on active tous les capteurs avant et arriere
-		obstacle = obstacle || capteurs.readCapteurValue(LATERAL_AVANT_GAUCHE)
-				|| capteurs.readCapteurValue(LATERAL_AVANT_DROIT)
-				|| capteurs.readCapteurValue(LATERAL_ARRIERE_GAUCHE)
-				|| capteurs.readCapteurValue(LATERAL_ARRIERE_DROIT);
+	// Juste les deux de devant et les deux de dérriere
+	int latGaucheAdc = averageLatGauche(ioGp2D.readCapteurValue(GP2D_GAUCHE_COTE));
+	int latDroitAdc = averageLatDroit(ioGp2D.readCapteurValue(GP2D_DROIT_COTE));
+	int gaucheAdc = averageGauche(ioGp2D.readCapteurValue(GP2D_GAUCHE_FRONT));
+	int droitAdc = averageDroit(ioGp2D.readCapteurValue(GP2D_DROIT_FRONT));
+
+	boolean latGauche = latGaucheAdc > 1000;
+	boolean latDroit = latDroitAdc > 1000;
+	boolean gauche = gaucheAdc > 1140;
+	boolean droit = droitAdc > 1140;
+
+#ifdef MAIN_DEBUG_MODE
+	/*Serial.print(latGaucheAdc);Serial.print(";");
+	Serial.print(gaucheAdc);Serial.print(";");
+	Serial.print(droitAdc);Serial.print(";");
+	Serial.print(latDroitAdc);Serial.println(";");*/
+#endif
+
+	return latGauche || latDroit || gauche || droit;
+}
+
+// Moving average
+int averageLatGauche(int newValue) {
+	long value = newValue;
+	for (int i = nbValues - 1 ; i > 0 ; i--) {
+		valuesLatGauche[i] = valuesLatGauche[i - 1];
+		value += valuesLatGauche[i];
 	}
-	return obstacle;
-*/
+	valuesLatGauche[0] = newValue;
+	return value / nbValues;
+}
+int averageGauche(int newValue) {
+	long value = newValue;
+	for (int i = nbValues - 1 ; i > 0 ; i--) {
+		valuesGauche[i] = valuesGauche[i - 1];
+		value += valuesGauche[i];
+	}
+	valuesGauche[0] = newValue;
+	return value / nbValues;
+}
+int averageDroit(int newValue) {
+	long value = newValue;
+	for (int i = nbValues - 1 ; i > 0 ; i--) {
+		valuesDroit[i] = valuesDroit[i - 1];
+		value += valuesDroit[i];
+	}
+	valuesDroit[0] = newValue;
+	return value / nbValues;
+}
+int averageLatDroit(int newValue) {
+	long value = newValue;
+	for (int i = nbValues - 1 ; i > 0 ; i--) {
+		valuesLatDroit[i] = valuesLatDroit[i - 1];
+		value += valuesLatDroit[i];
+	}
+	valuesLatDroit[0] = newValue;
+	return value / nbValues;
 }
