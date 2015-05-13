@@ -51,8 +51,8 @@
 
 #define SERVO_STAB					1
 #define SERVO_GP2D					2
-#define SERVO_TAPIS_HAUT			3
-#define SERVO_TAPIS_BAS				4
+#define SERVO_TAPIS_HAUT			16
+#define SERVO_TAPIS_BAS				17
 
 #define SPEED_STAB					15
 #define SPEED_GP2D					25
@@ -65,10 +65,10 @@
 #define GP2D_MATCH 					1120
 #define GP2D_ESCALIER				1840
 
-#define TAPIS_HAUT_OUVERT			1500
-#define TAPIS_HAUT_FERME			1500
-#define TAPIS_BAS_OUVERT			1500
-#define TAPIS_BAS_FERME				1500
+#define TAPIS_HAUT_OUVERT			1400
+#define TAPIS_HAUT_FERME			1570
+#define TAPIS_BAS_OUVERT			1600
+#define TAPIS_BAS_FERME				2140
 
 // ------------------------------------ //
 // Gestion de la stabilisation escalier //
@@ -105,6 +105,8 @@
 // Input Expanders
 #define SW_BEQUILLE	   		0
 #define SW_TIRETTE     		1
+#define IND_POSITION_1		2
+#define IND_POSITION_2		3
 
 // Input Analogique
 #define GP2D_DROIT_COTE		2

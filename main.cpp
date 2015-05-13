@@ -16,9 +16,6 @@
 #include <adafruit/Adafruit_GFX.h>
 #include <adafruit/Adafruit_SSD1306.h>
 
-// 10 DOF
-#include <adafruit/Adafruit_10DOF.h>
-
 #include "define.h"
 
 // Prototype des fonctions principale
@@ -49,11 +46,9 @@ Convertion Conv = Convertion(6.476683938, 17.791666667);
 
 // Moteur pour la béquille
 PWMMotor motBequille = PWMMotor(DIR_MOTB, PWM_MOTB, CURRENT_MOTB);
-Pid pidBequille = Pid();
 
 // Classe de gestion du robot (asserv, odométrie, pathfinding, evittement, etc...)
 RobotManager robotManager = RobotManager();
-Adafruit_10DOF dof = Adafruit_10DOF();
 
 // I2C Boards
 SD21 servoManager = SD21(SD21_ADD_BOARD);
@@ -63,8 +58,6 @@ Adafruit_SSD1306 lcd = Adafruit_SSD1306(OLED_RST);
 BoardPCF8574 ioGyro = BoardPCF8574("Gyro", PCF_GYRO_ADD_BOARD);
 BoardPCF8574 ioCapteurs = BoardPCF8574("Num", PCF_CAPTEURS_ADD_BOARD);
 BoardI2CADC ioGp2D = BoardI2CADC(GP2D_ADD_BOARD);
-Adafruit_LSM303_Accel_Unified accel = Adafruit_LSM303_Accel_Unified(30301);
-Adafruit_LSM303_Mag_Unified mag = Adafruit_LSM303_Mag_Unified(30302);
 
 // Gestion des étapes
 int gestEtapes;
@@ -75,23 +68,19 @@ int gestEtapes;
 const double rampAccDistance = 800.0; // en mm/s2
 const double rampDecDistance = 800.0; // en mm/s2
 
-const double rampAccOrientation = 1000.0; // en mm/s2
-const double rampDecOrientation = 1000.0; // en mm/s2
+const double rampAccOrientation = 800.0; // en mm/s2
+const double rampDecOrientation = 800.0; // en mm/s2
 
 // -------------- //
 // Parametres PID //
 // -------------- //
 const double kpD = 1.00;
-const double kiD = 0.50;
+const double kiD = 0.75;
 const double kdD = 0.25;
 
-const double kpO = 0.50;
-const double kiO = 0.25;
-const double kdO = 1.00;
-
-const double kpB = 40.00;
-const double kiB = 2.00;
-const double kdB = 0.00;
+const double kpO = 1.00;
+const double kiO = 0.50;
+const double kdO = 0.00;
 
 // Constantes d'ajustement pour les roues folles
 const double coefRoueDroite = 1.00;
@@ -106,13 +95,6 @@ long valuesLatGauche[nbValues] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 long valuesGauche[nbValues] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 long valuesDroit[nbValues] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 long valuesLatDroit[nbValues] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-
-// Evennement pour l'orientation sur les marches
-double rollCons;
-double rollOutput;
-sensors_event_t accelEvt;
-sensors_event_t magEvt;
-sensors_vec_t orientation;
 
 // ------------------------------------------------------- //
 // ------------------------- MAIN ------------------------ //
@@ -168,52 +150,6 @@ void setup() {
 		while(1 == 1);
 	}
 
-	// ------------------------------------ //
-	// Gyroscope / Accelerometre / Pression //
-	// ------------------------------------ //
-
-	if (!accel.begin() || !mag.begin()) {
-#ifdef MAIN_DEBUG_MODE
-		Serial.println(" [ ERROR ] Oops, j'ai perdu mon Accelerometre et Magnetometre");
-#endif
-		lcd.clearDisplay();
-		lcd.setTextSize(1);
-		lcd.println("   /!\\");
-		lcd.println("  Erreur");
-		lcd.println("Accel, Mag");
-		lcd.display();
-
-		// Il manque des périphérique on bloque tout
-		while(1 == 1);
-	}
-
-#ifdef MAIN_DEBUG_MODE
-	sensor_t sensor;
-
-	accel.getSensor(&sensor);
-	Serial.println(F(" -> ACCELEROMETER"));
-	Serial.print  (F("    * Sensor    : ")); Serial.println(sensor.name);
-	Serial.print  (F("    * Driver Ver: ")); Serial.println(sensor.version);
-	Serial.print  (F("    * Unique ID : ")); Serial.println(sensor.sensor_id);
-	Serial.print  (F("    * Max Value : ")); Serial.print(sensor.max_value); Serial.println(F(" m/s^2"));
-	Serial.print  (F("    * Min Value : ")); Serial.print(sensor.min_value); Serial.println(F(" m/s^2"));
-	Serial.print  (F("    * Resolution: ")); Serial.print(sensor.resolution); Serial.println(F(" m/s^2"));
-
-	mag.getSensor(&sensor);
-	Serial.println(F(" -> MAGNETOMETER"));
-	Serial.print  (F("    * Sensor    : ")); Serial.println(sensor.name);
-	Serial.print  (F("    * Driver Ver: ")); Serial.println(sensor.version);
-	Serial.print  (F("    * Unique ID : ")); Serial.println(sensor.sensor_id);
-	Serial.print  (F("    * Max Value : ")); Serial.print(sensor.max_value); Serial.println(F(" uT"));
-	Serial.print  (F("    * Min Value : ")); Serial.print(sensor.min_value); Serial.println(F(" uT"));
-	Serial.print  (F("    * Resolution: ")); Serial.print(sensor.resolution); Serial.println(F(" uT"));
-#endif
-
-	// Init value Accel + Mag
-	accel.getEvent(&accelEvt);
-	mag.getEvent(&magEvt);
-	dof.fusionGetOrientation(&accelEvt, &magEvt, &orientation);
-
 	// ------------- //
 	// Servo manager //
 	// ------------- //
@@ -252,8 +188,6 @@ void setup() {
 	// Béquille //
 	// ------- //
 	motBequille.stop();
-	pidBequille.setTunings(kpB, kiB, kdB);
-	pidBequille.reset();
 
 #ifdef MAIN_DEBUG_MODE
 	Serial.println(" - Config bequille [OK]");
@@ -321,7 +255,6 @@ void setup() {
 	}
 
 	// Init Gestion Etapes
-	// TODO : A changer
 	gestEtapes = 0;
 }
 
@@ -367,7 +300,7 @@ int main(void) {
 #ifdef MAIN_DEBUG_MODE
 	Serial.println("Descente");
 #endif
-	motBequille.cmd(200);
+	motBequille.cmd(255);
 	while(ioCapteurs.readCapteurValue(SW_BEQUILLE));
 	motBequille.stop();
 	delay(1000);
@@ -376,7 +309,7 @@ int main(void) {
 #ifdef MAIN_DEBUG_MODE
 	Serial.println("Monte");
 #endif
-	motBequille.cmd(-200);
+	motBequille.cmd(-255);
 	while(!ioCapteurs.readCapteurValue(SW_BEQUILLE));
 	motBequille.stop();
 
@@ -409,6 +342,7 @@ int main(void) {
 	lcd.display();
 
 	while(ioCapteurs.readCapteurValue(SW_TIRETTE)) {
+		team = lectureEquipe();
 		heartBeat();
 #ifdef MAIN_DEBUG_MODE
 		if (Serial.available()) {
@@ -427,15 +361,11 @@ int main(void) {
 	robotManager.resetEncodeurs();
 	servoManager.setPosition(SERVO_GP2D, GP2D_MATCH);
 
-	team = lectureEquipe();
 	if (team == EQUIPE_JAUNE) {
 		robotManager.setPosition(Conv.mmToPulse(1000), Conv.mmToPulse(165), Conv.degToPulse(90));
 	} else {
 		robotManager.setPosition(Conv.mmToPulse(1000), Conv.mmToPulse(2835), Conv.degToPulse(-90));
 	}
-
-	// FIXME : A supprimer.
-	robotManager.setPosition(Conv.mmToPulse(1000), Conv.mmToPulse(165), Conv.degToPulse(90));
 
 #ifdef MAIN_DEBUG_MODE
 	Serial.println(" == DEBUT DU MATCH ==");
@@ -462,13 +392,15 @@ int main(void) {
 		lcd.print("T ");lcd.print((t - startMatch) / 1000);lcd.print(" E ");lcd.println(gestEtapes - 1);
 		lcd.print("X ");lcd.print((int) Conv.pulseToMm(robotManager.getPosition().getX()));lcd.print(" Y ");lcd.print((int) Conv.pulseToMm(robotManager.getPosition().getY()));lcd.print(" A ");lcd.println((int) Conv.pulseToDeg(robotManager.getPosition().getAngle()));
 		lcd.print("Tap ");lcd.print(robotManager.getTrajetEnApproche());lcd.print(" Tat ");lcd.println(robotManager.getTrajetAtteint());
-		lcd.print("Roll ");lcd.println(orientation.roll);
 		lcd.display();
 	} while(t - startMatch <= TPS_MATCH);
 
 	// Plus de mouvement on arrete les moteurs.
-	motBequille.stop();
 	robotManager.stop();
+	motBequille.stop();
+
+	servoManager.setPosition(SERVO_TAPIS_BAS, TAPIS_BAS_OUVERT);
+	servoManager.setPosition(SERVO_TAPIS_HAUT, TAPIS_HAUT_OUVERT);
 
 	while(millis() - startMatch <= END_TOUT);
 	endMatch();
@@ -487,31 +419,30 @@ void matchLoop() {
 		nextEtape();
 	}
 
+	// Step première marches
+	if (gestEtapes == 3) {
+		// On stop le moteur
+		if (ioCapteurs.readCapteurValue(IND_POSITION_1)) {
+			motBequille.stop();
+		}
+	}
+
+	// Step autres marches
+	if (gestEtapes >= 5) {
+		if (ioCapteurs.readCapteurValue(IND_POSITION_2)) {
+			motBequille.cmd(-255);
+		}
+	}
+
+	// Step fin escalier
+	if (gestEtapes >= 7) {
+		if (ioCapteurs.readCapteurValue(SW_BEQUILLE)) {
+			motBequille.stop();
+		}
+	}
+
 	// Processing de l'asservissement.
 	robotManager.process();
-
-	// Gestion de l'asservissement gyroscopique
-	if (gestEtapes >= 4) {
-		accel.getEvent(&accelEvt);
-		mag.getEvent(&magEvt);
-		dof.fusionGetOrientation(&accelEvt, &magEvt, &orientation);
-		rollOutput = pidBequille.compute(rollCons, orientation.roll);
-		if (ioCapteurs.readCapteurValue(SW_BEQUILLE) && rollOutput < 0) {
-			// On ne fait rien
-			pidBequille.reset();
-			motBequille.stop();
-		} else {
-			motBequille.cmd(rollOutput);
-		}
-#ifdef MAIN_DEBUG_MODE
-		double e = pidBequille.getError();
-		Serial.print(rollCons);
-		Serial.print(";");Serial.print(orientation.roll);
-		Serial.print(";");Serial.print(e);
-		Serial.print(";");Serial.print(rollOutput);
-		Serial.print(";");Serial.println(motBequille.current());
-#endif
-	}
 }
 
 // Gestion basique de la stratégie.
@@ -522,54 +453,91 @@ void nextEtape(){
 	switch (gestEtapes) {
 	case 0 :
 		// Point de passage à la con
-		robotManager.setVitesse(600.0, 800.0);
-		robotManager.gotoPointMM(1000, 1000, false);
+		robotManager.setVitesse(800.0, 800.0);
+		if (team == EQUIPE_JAUNE) {
+			robotManager.gotoPointMM(1000, 1380, true);
+		} else {
+			robotManager.gotoPointMM(1000, 1620, true);
+		}
 		gestEtapes++;
 		break;
 
 	case 1 :
-		// Devant les marches
-		robotManager.setVitesse(600.0, 800.0);
-		robotManager.gotoPointMM(730, 1335.0, true);
+		// Orientation face aux marches
+		robotManager.setVitesse(800.0, 800.0);
+		if (team == EQUIPE_JAUNE) {
+			robotManager.tourneDeg(90);
+		} else {
+			robotManager.tourneDeg(-90);
+		}
 		gestEtapes++;
 		break;
 
 	case 2 :
-		// Orientation face aux marches
-		robotManager.setVitesse(600.0, 800.0);
-		robotManager.gotoOrientationDeg(180);
+		// Devant les marches
+		robotManager.setVitesse(800.0, 800.0);
+		if (team == EQUIPE_JAUNE) {
+			robotManager.gotoPointMM(730, 1380.0, true);
+		} else {
+			robotManager.gotoPointMM(730, 1620.0, true);
+		}
+		motBequille.cmd(255);
 		gestEtapes++;
 		break;
 
 	case 3 :
-		// Récupération de la valeur de consigne
-		pidBequille.reset();
-		accel.getEvent(&accelEvt);
-		mag.getEvent(&magEvt);
-		dof.fusionGetOrientation(&accelEvt, &magEvt, &orientation);
-		rollCons = orientation.roll;
-
-		// Stabilisation relaché
 		servoManager.setPosition(SERVO_STAB, STAB_HAUT);
-
-		// Montée des marches
-		robotManager.setVitesse(200.0, 400.0);
-		robotManager.avanceMM(600);
+		servoManager.setPosition(SERVO_TAPIS_HAUT, TAPIS_HAUT_OUVERT);
 		gestEtapes++;
 		break;
+
 	case 4 :
-		// Bas des marches tans que l'on as le capteur bequille
-		if (!ioCapteurs.readCapteurValue(SW_BEQUILLE)) {
-			// Fin de course perdu, l'asserv commence
+		// On pousse sur la première position
+		if (ioCapteurs.readCapteurValue(IND_POSITION_1)) {
+			motBequille.stop();
 			gestEtapes++;
 		}
 		break;
+
 	case 5 :
-		// Dès que l'on récupère le fin de course on stop tout
+		// On avance la première marche.
+		robotManager.setVitesse(800.0, 800.0);
+		robotManager.avanceMM(120);
+		motBequille.cmd(255);
+		gestEtapes++;
+		break;
+
+	case 6 :
+		// On positionne a fond
+		servoManager.setPosition(SERVO_GP2D, GP2D_ESCALIER);
+		gestEtapes++;
+		break;
+
+	case 7 :
+		// On fini notre ascension
+		robotManager.setVitesse(600.0, 800.0);
+		robotManager.avanceMM(400);
+		gestEtapes++;
+		break;
+
+	case 8 :
+		// On stabilise tout le bouzin
+		motBequille.cmd(-255);
+		gestEtapes++;
+		break;
+
+	case 9 :
 		if (ioCapteurs.readCapteurValue(SW_BEQUILLE)) {
-			robotManager.avanceMM(0);
+			servoManager.setPosition(SERVO_STAB, STAB_BAS);
+			motBequille.stop();
 			gestEtapes++;
 		}
+		break;
+
+	case 10 :
+		robotManager.setVitesse(800.0, 800.0);
+		robotManager.avanceMM(50);
+		gestEtapes++;
 		break;
 	}
 }
@@ -635,17 +603,24 @@ boolean lectureEquipe() {
  * Méthode retournant l'information de présence d'un obstacle (adversaire ???)
  */
 boolean hasObstacle() {
-
-	// Juste les deux de devant et les deux de dérriere
 	int latGaucheAdc = averageLatGauche(ioGp2D.readCapteurValue(GP2D_GAUCHE_COTE));
 	int latDroitAdc = averageLatDroit(ioGp2D.readCapteurValue(GP2D_DROIT_COTE));
 	int gaucheAdc = averageGauche(ioGp2D.readCapteurValue(GP2D_GAUCHE_FRONT));
 	int droitAdc = averageDroit(ioGp2D.readCapteurValue(GP2D_DROIT_FRONT));
 
-	boolean latGauche = latGaucheAdc > 1000;
-	boolean latDroit = latDroitAdc > 1000;
-	boolean gauche = gaucheAdc > 1140;
-	boolean droit = droitAdc > 1140;
+	if (gestEtapes <= 3) {
+		boolean latGauche = latGaucheAdc > 1450;
+		boolean latDroit = latDroitAdc > 1450;
+		boolean gauche = gaucheAdc > 1800;
+		boolean droit = droitAdc > 1800;
+
+		return latGauche || latDroit || gauche || droit;
+	} else if (gestEtapes > 8) {
+		// TODO : Vide
+		return false;
+	} else {
+		return false;
+	}
 
 #ifdef MAIN_DEBUG_MODE
 	/*Serial.print(latGaucheAdc);Serial.print(";");
@@ -654,7 +629,7 @@ boolean hasObstacle() {
 	Serial.print(latDroitAdc);Serial.println(";");*/
 #endif
 
-	return latGauche || latDroit || gauche || droit;
+
 }
 
 // Moving average
