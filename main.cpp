@@ -536,7 +536,7 @@ void nextEtape(){
 
 	case 10 :
 		robotManager.setVitesse(800.0, 800.0);
-		robotManager.avanceMM(50);
+		robotManager.avanceMM(150);
 		gestEtapes++;
 		break;
 	}
