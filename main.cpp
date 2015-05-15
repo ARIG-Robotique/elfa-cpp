@@ -536,7 +536,15 @@ void nextEtape(){
 
 	case 10 :
 		robotManager.setVitesse(800.0, 800.0);
-		robotManager.avanceMM(150);
+		robotManager.avanceMM(130);
+		gestEtapes++;
+		break;
+
+	case 11 :
+		// Libération du tapis
+		servoManager.setPosition(SERVO_TAPIS_BAS, TAPIS_BAS_OUVERT);
+		robotManager.setVitesse(800.0, 800.0);
+		robotManager.avanceMM(40);
 		gestEtapes++;
 		break;
 	}
