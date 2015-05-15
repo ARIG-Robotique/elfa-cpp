@@ -56,7 +56,7 @@
 
 #define SPEED_STAB					15
 #define SPEED_GP2D					25
-#define SPEED_TAPIS					5
+#define SPEED_TAPIS					0
 
 #define STAB_BAS					620
 #define STAB_HAUT                   2000
