@@ -11,7 +11,6 @@ include_directories(../robot-system-lib/src)
 generate_arduino_firmware(ElfaMega
     SRCS src/main.cpp
     HDRS src/define.h
-    ARDLIBS Adafruit_GFX Adafruit_SSD1306
     LIBS RobotMega
     BOARD mega2560
 )
