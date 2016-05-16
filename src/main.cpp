@@ -13,8 +13,8 @@
 #include <filters/Pid.h>
 
 // Ecran LCD
-#include <adafruit/Adafruit_GFX.h>
-#include <adafruit/Adafruit_SSD1306.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 
 #include "define.h"
 
