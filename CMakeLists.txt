@@ -13,4 +13,5 @@ generate_arduino_firmware(ElfaMega
     HDRS src/define.h
     LIBS RobotMega
     BOARD mega2560
+    PORT /dev/ttyACM3
 )
