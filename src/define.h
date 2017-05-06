@@ -8,74 +8,50 @@
 #ifndef DEFINE_H_
 #define DEFINE_H_
 
-#define VERSION						1
+#define VERSION              2017
 
-//#define MAIN_DEBUG_MODE
+#define TPS_MATCH            90000 // 90 sec pour palier au pb de réaction du bonhomme
+#define END_TOUT             95000 // 95 sec c'est vraiment la fin de tout
 
-#define TPS_MATCH                   89800 // 89,8 sec pour palier au pb de réaction du bonhomme
-#define END_TOUT					90000 // 90 sec c'est vraiment la fin de tout
-
-#define EQUIPE_VERTE				true
-#define EQUIPE_JAUNE				false
+#define SEUIL_PRESENCE_ROBOT  35 // En cm (a peu près vrai)
+#define TPS_CYCLE_DEPOSE_FULL 80000 // En ms temps a partir duquel on ne revient pas
+#define TPS_CYCLE_ANNULE      85000 // En ms temps ou on lache l'affaire
 
 // ---------------------- //
 // Adresse des cartes I2C //
 // ---------------------- //
-#define NB_I2C_DEVICE				11
+#define NB_I2C_DEVICE         2
 
-#define OLED_LCD_ADD_BOARD			0x3C
-#define PCF_GYRO_ADD_BOARD			0x3E
-#define PCF_CAPTEURS_ADD_BOARD		0x3F
-#define GP2D_ADD_BOARD				0x48
-#define MD22_ADD_BOARD				0x58
-#define SD21_ADD_BOARD				0x61
-#define ENCODEUR_DROIT_BOARD	  	0xB0
-#define ENCODEUR_GAUCHE_BOARD	 	0xB2
-
-// --------------------------------- //
-// Configuration de l'asservissement //
-// --------------------------------- //
-
-#define TIME_ASSERV_MS				10
-
-// -------------------------------- //
-// Configuration moteurs propulsion //
-// -------------------------------- //
-
-#define LEFT_MOTOR					ASSIGN_MOTOR_1
-#define RIGHT_MOTOR					ASSIGN_MOTOR_2
+#define OLED_LCD_ADD_BOARD    0x3C
+#define SD21_ADD_BOARD        0x61
 
 // ------------------------------- //
 // Configuration des servo moteurs //
 // ------------------------------- //
+#define SERVO_ASC_NB       6
+#define SERVO_INC_NB       7
 
-#define SERVO_STAB					1
-#define SERVO_GP2D					2
-#define SERVO_TAPIS_HAUT			16
-#define SERVO_TAPIS_BAS				17
+// Valeur + = monte
+#define SPEED_ASC          0
+#define ASC_START          1140
+#define ASC_BAS     	   580
+#define ASC_PRE_DEPOSE     1570
+#define ASC_DEPOSE         2370
 
-#define SPEED_STAB					15
-#define SPEED_GP2D					25
-#define SPEED_TAPIS					0
+// Valeur - = anti horaire
+#define SPEED_INC_NORM     0
+#define SPEED_INC_COMB     15
+#define INC_START     	   1580
+#define INC_PRISE          2430
+#define INC_PRE_DEPOSE     970
+#define INC_DEPOSE         550
 
-#define STAB_BAS					620
-#define STAB_HAUT                   2000
-
-#define GP2D_GARAGE					1010
-#define GP2D_MATCH 					1120
-#define GP2D_ESCALIER				1840
-
-#define TAPIS_HAUT_OUVERT			1400
-#define TAPIS_HAUT_FERME			1570
-#define TAPIS_BAS_OUVERT			1600
-#define TAPIS_BAS_FERME				2140
-
-// ------------------------------------ //
-// Gestion de la stabilisation escalier //
-// ------------------------------------ //
-
-#define SENS_BEQUILLE_MONTE			LOW
-#define SENS_BEQUILLE_DESCENT		HIGH
+// --------------------- //
+// Configuration moteurs //
+// --------------------- //
+#define LOW_SPEED          10
+#define HIGH_SPEED         255
+#define STOP_SPEED         0
 
 // --------------- //
 // IO des capteurs //
@@ -84,40 +60,17 @@
 // Output
 #define OLED_RST       		4
 
-#define PWM_R          		10
-#define PWM_G          		9
-#define PWM_B          		8
-
-#define PWM_MOTA       		11
-#define DIR_MOTA       		12
-#define PWM_MOTB       		6
-#define DIR_MOTB       		7
+#define PWM_HELICE         	8
+#define IN2_HELICE       	17
 
 // Input
-#define PIN_IRQ_1_2    		2
-#define PIN_IRQ_3_4    		3
-#define PIN_IRQ_5      		18
-#define PIN_IRQ_6      		19
-#define EQUIPE         		A0
-#define CURRENT_MOTA   		A1
-#define CURRENT_MOTB   		A2
+#define AU                  15
+#define TIRETTE             16
+#define GP2D         		A0
 
-// Input Expanders
-#define SW_BEQUILLE	   		0
-#define SW_TIRETTE     		1
-#define IND_POSITION_1		2
-#define IND_POSITION_2		3
-
-// Input Analogique
-#define GP2D_DROIT_COTE		2
-#define GP2D_DROIT_FRONT	1
-#define GP2D_GAUCHE_FRONT	0
-#define GP2D_GAUCHE_COTE	6
-
-// Interrupts
-#define ISR_1_2        		0
-#define ISR_3_4        		1
-#define ISR_5          		5
-#define ISR_6          		4
+enum CheckRobot {
+    PAS_PRESENT,
+    PRESENT
+};
 
 #endif /* DEFINE_H_ */
