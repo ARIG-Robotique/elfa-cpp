@@ -33,7 +33,7 @@ Adafruit_SSD1306 lcd = Adafruit_SSD1306(OLED_RST);
 CheckRobot nerell = PAS_PRESENT;
 
 const int nbValues = 100;
-float valuesDistance[nbValues] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+int valuesDistance[nbValues] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -69,15 +69,19 @@ void setup() {
 	// Initialisation ecran LCD //
 	// ------------------------ //
 	lcd.begin(SSD1306_SWITCHCAPVCC, OLED_LCD_ADD_BOARD);
+    lcd.display();
+	lcd.setTextColor(WHITE);
+
+	// Affichage du logo
+	delay(1000);
+
+    // Nom du robot
     lcd.clearDisplay();
     lcd.setTextSize(2);
     lcd.println(" * ARIG *");
     lcd.println(" * ELFA *");
     lcd.display();
-	lcd.setTextColor(WHITE);lcd.
-
-	// Affichage du logo
-	delay(2000);
+    delay(2000);
 
 	byte nbDevices = i2cUtils.scan();
 	if (nbDevices != NB_I2C_DEVICE) {
@@ -370,24 +374,16 @@ bool hasTirette() {
 
 float distanceRobot() {
     int sensorRaw = analogRead(GP2D);
-    // Conversion en cm
-    float value = (6787.0 / (sensorRaw - 3.0)) - 4.0; // http://www.acroname.com/robotics/info/articles/irlinear/irlinear.html
-
-    // Application des bornes (en cm)
-    if (value < 12) {
-        value = 12;
-    }
-    if (value > 60) {
-        value = 60;
-    }
-
+    int value = sensorRaw;
     for (int i = nbValues - 1 ; i > 0 ; i--) {
         valuesDistance[i] = valuesDistance[i - 1];
         value += valuesDistance[i];
     }
     valuesDistance[0] = sensorRaw;
     float average = value / nbValues;
-    return average;
+    // Conversion en cm
+    float resultCm = (6787.0 / (average - 3.0)) - 4.0; // http://www.acroname.com/robotics/info/articles/irlinear/irlinear.html
+    return resultCm;
 }
 
 void initMatchServos() {
