@@ -13,9 +13,13 @@
 #define TPS_MATCH            90000 // 90 sec pour palier au pb de réaction du bonhomme
 #define END_TOUT             95000 // 95 sec c'est vraiment la fin de tout
 
+#define NB_INIT_STEP         9
+
+#define MAX_RAW_GP            300
+#define MIN_RAW_GP            90
 #define SEUIL_PRESENCE_ROBOT  35 // En cm (a peu près vrai)
-#define TPS_CYCLE_DEPOSE_FULL 80000 // En ms temps a partir duquel on ne revient pas
-#define TPS_CYCLE_ANNULE      85000 // En ms temps ou on lache l'affaire
+#define TPS_CYCLE_DEPOSE_FULL 75000 // En ms temps a partir duquel on ne revient pas
+#define TPS_CYCLE_ANNULE      86000 // En ms temps ou on lache l'affaire
 
 // ---------------------- //
 // Adresse des cartes I2C //
@@ -46,9 +50,9 @@
 #define INC_PRE_DEPOSE     970
 #define INC_DEPOSE         550
 
-// --------------------- //
-// Configuration moteurs //
-// --------------------- //
+// --------------------------- //
+// Configuration moteur hélice //
+// --------------------------- //
 #define LOW_SPEED          10
 #define HIGH_SPEED         255
 #define STOP_SPEED         0
@@ -71,6 +75,11 @@
 enum CheckRobot {
     PAS_PRESENT,
     PRESENT
+};
+
+struct GP2D12Result {
+    float raw;
+    float cm;
 };
 
 #endif /* DEFINE_H_ */
