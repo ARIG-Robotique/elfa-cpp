@@ -44,9 +44,14 @@ before_install:
   - cd ..
   - git clone https://github.com/arduino-cmake/Arduino-CMake-NG.git arduino-cmake-ng
   - git clone https://github.com/ARIG-Robotique/robot-system-lib.git
+  - git@github.com:adafruit/Adafruit-GFX-Library.git Adafruit_GFX
+  - git@github.com:adafruit/Adafruit_SSD1306.git
 
 install:
   - cd "$TRAVIS_BUILD_DIR"
+  - rm -f Adafruit_GFX Adafruit_SSD1306
+  - ln -s ../Adafruit_GFX Adafruit_GFX
+  - ln -s ../Adafruit_SSD1306 Adafruit_SSD1306
   - mkdir build
   - rm -rf build/*
   - cd build/
