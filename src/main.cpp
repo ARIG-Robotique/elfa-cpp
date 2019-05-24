@@ -13,25 +13,21 @@
 // Prototype des fonctions principale
 void setup();
 void progressSetup(String message, unsigned long delayMs = 500);
-void matchLoop(unsigned long elapsedTime, GP2D12Result distanceRobot);
-void funnyAction();
-void endMatch();
+void matchLoop(GP2D12Result distanceRobot);
 
 // Prototype des fonctions business
-void stopMotor();
-void speedMotor(int speed);
 bool hasAU();
-bool hasTirette();
-GP2D12Result distanceRobot();
+void setMode();
+void setManualPosition();
 void initMatchServos();
-void cycleDeposeAndReturn();
-void cycleDeposeOnly();
+GP2D12Result distanceRobot();
 
 // I2C Boards
 SD21 servoManager = SD21(SD21_ADD_BOARD);
 Adafruit_SSD1306 lcd = Adafruit_SSD1306(OLED_RST);
 
-CheckRobot nerell = PAS_PRESENT;
+CheckRobot nerell = PARTI;
+Mode mode = MANUEL;
 
 int setupStep = 0;
 const int nbValues = 100;
@@ -51,7 +47,7 @@ void setup() {
 	// ------------------------------------------------------------- //
 #ifdef DEBUG_MODE
 	Serial.begin(115200);
-	Serial.println(" == Initialisation robot Elfa ==");
+	Serial.println(" == Initialisation experience Elfa ==");
 #endif
 
 	// ---------- //
@@ -81,7 +77,7 @@ void setup() {
     lcd.clearDisplay();
     lcd.setTextSize(2);
     lcd.println("   ARIG  ");
-    lcd.println("ELFA 2017");
+    lcd.print("ELFA ");lcd.println(VERSION);
     lcd.display();
     delay(1000);
     lcd.startscrollleft(0x00, 0x0F);
@@ -120,7 +116,8 @@ void setup() {
 	// Inputs AVR numérique
     progressSetup("IN num. AVR");
 	pinMode(AU, INPUT);
-	pinMode(TIRETTE, INPUT);
+	pinMode(SELECT_MODE, INPUT);
+    pinMode(SELECT_POSITION, INPUT);
 #ifdef DEBUG_MODE
 	Serial.println(" - Inputs numérique AVR [OK]");
 #endif
@@ -141,25 +138,11 @@ void setup() {
 	Serial.println(" - Outputs numérique AVR [OK]");
 #endif
 
-	// Outputs AVR analogique
-    progressSetup("OUT ana. AVR");
-    pinMode(PWM_HELICE, OUTPUT);
-#ifdef DEBUG_MODE
-	Serial.println(" - Outputs analogique (PWM) AVR [OK]");
-#endif
-
     // Config servos
     progressSetup("Pos. init servo");
-    servoManager.setPositionAndSpeed(SERVO_ASC_NB, SPEED_ASC, ASC_START);
-    servoManager.setPositionAndSpeed(SERVO_INC_NB, SPEED_INC_NORM, INC_START);
+    servoManager.setPositionAndSpeed(SERVO_ASC_NB, SPEED_ASC, ASC_BAS);
 #ifdef DEBUG_MODE
     Serial.println(" - Config servo SD21 [OK]");
-#endif
-
-    progressSetup("Stop helice");
-    stopMotor();
-#ifdef DEBUG_MODE
-    Serial.println(" - Config moteur hélisse [OK]");
 #endif
 
     // Initialisation GP2D moyenne
@@ -171,7 +154,7 @@ void setup() {
 
 // Point d'entrée du programme
 int main(void) {
-	// Initialisation du SDK Arduino.
+	// Initialisation du SDK.
 	// A réécrire si on veut customiser tout le bouzin.
 	init();
 
@@ -192,58 +175,59 @@ int main(void) {
         Serial.println("/!\\ AU KO");
 #endif
         lcd.clearDisplay();
-        lcd.setTextSize(2);
+        lcd.setTextSize(4);
         lcd.setCursor(0, 0);
-        lcd.println("    /!\\");
-        lcd.println("   AU KO");
+        lcd.println("/!\\ AU KO");
         lcd.display();
+        delay(1000);
+        lcd.startscrollleft(0x00, 0x0F);
 
-        while(!hasAU());
+        while(!hasAU()) {
+            delay(500);
+        }
+        lcd.stopscroll();
         delay(1000);
     }
 
-	// Contrôle présence de la tirette
-	if (!hasTirette()) {
-		lcd.clearDisplay();
-        lcd.setTextSize(2);
-		lcd.setCursor(0, 0);
-        lcd.println("    /!\\");
-		lcd.println("Pas tirette");
-		lcd.display();
-
+    // Doit être en manuel avant le match
+    setMode();
+    if (mode == AUTO) {
 #ifdef DEBUG_MODE
-		Serial.println(" -> /!\\ La tirette n'est pas presente il faut d'abord la mettre !");
+        Serial.println("/!\\ Mode AUTO invalide au démarrage");
 #endif
+        lcd.clearDisplay();
+        lcd.setTextSize(4);
+        lcd.setCursor(0, 0);
+        lcd.println("/!\\ Mode MANUEL attendu");
+        lcd.display();
+        delay(1000);
+        lcd.startscrollleft(0x00, 0x0F);
 
-		while(!hasTirette())
-		delay(1000);
-	}
+        while(mode == AUTO) {
+            setMode();
+            delay(500);
+        }
+        lcd.stopscroll();
+        delay(1000);
+    }
 
-	// Attente du lancement du match.
+
+    // Mode Manuel avant match
 #ifdef DEBUG_MODE
-	Serial.println(" -> Attente depart tirette ...");
+    Serial.println("Mode Manuel");
 #endif
-
-	lcd.clearDisplay();
+    lcd.clearDisplay();
     lcd.setTextSize(2);
-	lcd.setCursor(0, 0);
-	lcd.println("Attente");
-	lcd.println("start ...");
-	lcd.display();
-
-	while(hasTirette()) {
-#ifdef DEBUG_MODE
-		if (Serial.available()) {
-			if (Serial.read() == 's') { // La touche s de la liaison série est égal à la tirette
-				break;
-			}
-		}
-#endif
-	}
+    lcd.setCursor(0, 0);
+    lcd.println("Mode Manuel");
+    lcd.display();
+    do {
+        setMode();
+        setManualPosition();
+        delay(500);
+    } while(mode != AUTO);
 
 	// Démarrage du comptage
-	unsigned long startMatch = millis();
-	unsigned long t;
     GP2D12Result distance;
 
 #ifdef DEBUG_MODE
@@ -258,9 +242,6 @@ int main(void) {
     initMatchServos();
 
 	do {
-		// Gestion du temps
-		t = millis();
-
         // Lecture distance
         distance = distanceRobot();
 
@@ -268,66 +249,26 @@ int main(void) {
 		lcd.clearDisplay();
         lcd.setTextSize(1);
 		lcd.setCursor(0,0);
-		lcd.print("T ");lcd.print((t - startMatch) / 1000);lcd.println(" s");
         lcd.print("D ");lcd.print(distance.cm);lcd.println(" cm");
         lcd.print("  ");lcd.print(distance.raw);lcd.println(" raw");
+        lcd.print("Nerell : ");lcd.println(nerell == PRESENT ? "PRESENT" : "PARTI");
 		lcd.display();
 
-        matchLoop(t - startMatch, distance);
+        matchLoop(distance);
 
-	} while(t - startMatch <= TPS_MATCH);
-
-    // Funny action
-    funnyAction();
-
-	while(millis() - startMatch <= END_TOUT);
-	endMatch();
-
-	// Fin de tout. Boucle infini pour eviter de dépiler la stack mémoire et éxécuter
-    // des instructions aléatoire.
-	while(true) {
-		// NOP
-	}
+	} while(nerell == PRESENT || nerell == PARTI); // while(true); mais sans le warning de CLion
 }
 
 // ---------------------------------------------------------------------------- //
 // Méthode appelé encore et encore, tant que le temps du match n'est pas écoulé //
 // ---------------------------------------------------------------------------- //
-void matchLoop(unsigned long elapsedTime, GP2D12Result distanceRobot) {
+void matchLoop(GP2D12Result distanceRobot) {
     if (distanceRobot.cm < SEUIL_PRESENCE_ROBOT) {
         nerell = PRESENT;
     } else if (distanceRobot.cm > SEUIL_PRESENCE_ROBOT && nerell == PRESENT) {
-        nerell = PAS_PRESENT;
-
-        if (elapsedTime >= TPS_CYCLE_DEPOSE_FULL && elapsedTime < TPS_CYCLE_ANNULE) {
-            cycleDeposeOnly();
-        } else if (elapsedTime < TPS_CYCLE_DEPOSE_FULL) {
-            cycleDeposeAndReturn();
-        }
+        nerell = PARTI;
+        servoManager.setPosition(SERVO_ASC_NB, ASC_HAUT);
     }
-}
-
-// -------------------------------------------- //
-// Méthode appele pour effectué la funny action //
-// -------------------------------------------- //
-void funnyAction() {
-    lcd.clearDisplay();
-    lcd.setCursor(0,0);
-    lcd.setTextSize(2);
-    lcd.println("* FUNNY  *");
-    lcd.println("* ACTION *");
-    lcd.display();
-
-//	for(int i = LOW_SPEED ; i <= HIGH_SPEED ; i++) {
-//		speedMotor(i);
-//		delay(4000 / (HIGH_SPEED - LOW_SPEED));
-//	}
-
-    speedMotor(LOW_SPEED);
-    delay(1000);
-    speedMotor(HIGH_SPEED);
-    delay(3000);
-    stopMotor();
 }
 
 // ----------------------------------- //
@@ -335,45 +276,35 @@ void funnyAction() {
 // ----------------------------------- //
 void endMatch() {
 #ifdef DEBUG_MODE
-	Serial.println(" == FIN MATCH ==");
+	Serial.println(" == FIN XP ==");
 #endif
 
 	lcd.clearDisplay();
 	lcd.setTextSize(2);
     lcd.setCursor(0,0);
     lcd.println(" *  FIN  *");
-    lcd.println(" * MATCH *");
+    lcd.println(" *  EXP  *");
 	lcd.display();
 }
 
 // ------------------------------------------------------- //
 // -------------------- BUSINESS METHODS ----------------- //
 // ------------------------------------------------------- //
-void stopMotor() {
-    speedMotor(STOP_SPEED);
-}
-void speedMotor(int speed) {
-	if (speed > 255)  {
-		speed = 255;
-	} else if (speed < 0) {
-		speed = 0;
-	}
-
-    if (speed == STOP_SPEED) {
-        digitalWrite(IN2_HELICE, LOW);
-    } else {
-        digitalWrite(IN2_HELICE, HIGH);
-    }
-
-    analogWrite(PWM_HELICE, speed);
-}
 
 bool hasAU() {
     return digitalRead(AU) == HIGH;
 }
-bool hasTirette() {
-    return digitalRead(TIRETTE) == HIGH;
+void setMode() {
+    mode = digitalRead(SELECT_MODE) == HIGH ? AUTO : MANUEL;
 }
+void setManualPosition() {
+    if (digitalRead(SELECT_POSITION) == HIGH) {
+        servoManager.setPosition(SERVO_ASC_NB, ASC_BAS);
+    } else {
+        servoManager.setPosition(SERVO_ASC_NB, ASC_HAUT);
+    }
+}
+
 
 GP2D12Result distanceRobot() {
     int sensorRaw = analogRead(GP2D);
@@ -401,46 +332,7 @@ GP2D12Result distanceRobot() {
 }
 
 void initMatchServos() {
-    servoManager.setPosition(SERVO_INC_NB, INC_PRISE);
-    delay(2000);
     servoManager.setPosition(SERVO_ASC_NB, ASC_BAS);
-}
-
-void cycleDeposeAndReturn() {
-    cycleDeposeOnly();
-    delay(5000);
-
-    lcd.clearDisplay();
-    lcd.setTextSize(2);
-    lcd.setCursor(0,0);
-    lcd.println("* RETOUR *");
-    lcd.display();
-
-    servoManager.setPosition(SERVO_ASC_NB, ASC_PRE_DEPOSE);
-    servoManager.setPosition(SERVO_INC_NB, INC_PRE_DEPOSE);
-    delay(1000);
-    servoManager.setPosition(SERVO_ASC_NB, ASC_START);
-    delay(1000);
-    servoManager.setPositionAndSpeed(SERVO_INC_NB, SPEED_INC_NORM, INC_PRISE);
-    delay(1000);
-    servoManager.setPosition(SERVO_ASC_NB, ASC_BAS);
-}
-
-void cycleDeposeOnly() {
-    lcd.clearDisplay();
-    lcd.setTextSize(2);
-    lcd.setCursor(0,0);
-    lcd.println("* DEPOSE *");
-    lcd.display();
-
-    servoManager.setPosition(SERVO_ASC_NB, ASC_START);
-    delay(2000);
-    servoManager.setPosition(SERVO_INC_NB, INC_PRE_DEPOSE);
-    delay(1000);
-    servoManager.setPosition(SERVO_ASC_NB, ASC_PRE_DEPOSE);
-    delay(1000);
-    servoManager.setPosition(SERVO_ASC_NB, ASC_DEPOSE);
-    servoManager.setPositionAndSpeed(SERVO_INC_NB, SPEED_INC_COMB, INC_DEPOSE);
 }
 
 void progressSetup(String message, unsigned long delayMs) {
