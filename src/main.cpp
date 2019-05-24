@@ -153,7 +153,7 @@ void setup() {
 }
 
 // Point d'entrée du programme
-int main(void) {
+int main() {
 	// Initialisation du SDK.
 	// A réécrire si on veut customiser tout le bouzin.
 	init();
@@ -269,22 +269,6 @@ void matchLoop(GP2D12Result distanceRobot) {
         nerell = PARTI;
         servoManager.setPosition(SERVO_ASC_NB, ASC_HAUT);
     }
-}
-
-// ----------------------------------- //
-// Méthode appelé pour la fin du match //
-// ----------------------------------- //
-void endMatch() {
-#ifdef DEBUG_MODE
-	Serial.println(" == FIN XP ==");
-#endif
-
-	lcd.clearDisplay();
-	lcd.setTextSize(2);
-    lcd.setCursor(0,0);
-    lcd.println(" *  FIN  *");
-    lcd.println(" *  EXP  *");
-	lcd.display();
 }
 
 // ------------------------------------------------------- //
