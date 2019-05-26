@@ -10,17 +10,17 @@
 
 #include "define.h"
 
+bool running = true;
+
 // Prototype des fonctions principale
-void setup();
 void progressSetup(String message, unsigned long delayMs = 500);
-void matchLoop(GP2D12Result distanceRobot, int startTime, int heartTime);
+void matchLoop(GP2D12Result distanceRobot, int heartTime);
 
 // Prototype des fonctions business
 bool hasAU();
 void setMode();
 void setManualPosition();
 void initMatchServos();
-void pulseElectron(int heartTime);
 GP2D12Result distanceRobot();
 void heartBeat(int heartTime);
 void heartBeatBandeau(int heartTime);
@@ -29,18 +29,13 @@ void heartBeatBandeau(int heartTime);
 SD21 servoManager = SD21(SD21_ADD_BOARD);
 Adafruit_SSD1306 lcd = Adafruit_SSD1306(OLED_RST);
 
-CheckRobot nerell = PARTI;
+CheckRobot nerell = UNKNOWN;
 Mode mode = MANUEL;
-AscenseurMode ascenseurMode = HAUT;
+Mode modePrec = MANUEL;
 
 int setupStep = 0;
-const int nbValues = 100;
-int valuesRaw[nbValues] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-
-int nerellStartTime;
+const int nbValues = 10;
+int valuesRaw[nbValues] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 // Heartbeat variables
 int heartTimePrec;
@@ -48,9 +43,7 @@ boolean heart;
 
 int heartTimeBandeauPrec;
 boolean heartBandeau;
-int randTimeBandeau;
-
-int pulseTimeElectronPrec;
+int randTimeBandeau = 0;
 
 // ------------------------------------------------------- //
 // ------------------------- MAIN ------------------------ //
@@ -114,7 +107,7 @@ void setup() {
 		lcd.display();
 
 		// Il manque des périphériques on bloque tout
-		while(true);
+		while(running);
 	}
 
 	// ------------- //
@@ -165,7 +158,7 @@ void setup() {
 
     // Initialisation GP2D moyenne
     for (int i = 0; i < nbValues ; i++) {
-        progressSetup("Init GP2D", 5);
+        progressSetup("Init GP2D", 2);
         distanceRobot();
     }
 }
@@ -214,7 +207,7 @@ int main() {
         lcd.setTextSize(2);
         lcd.setCursor(0, 0);
         lcd.println("/!\\ Mode");
-        lcd.println("/!\\ MANUEL");
+        lcd.println("/!\\ AUTO");
         lcd.display();
 
         while(mode == AUTO) {
@@ -224,36 +217,12 @@ int main() {
         delay(1000);
     }
 
-
-    // Mode Manuel avant match
-#ifdef DEBUG_MODE
-    Serial.println("Mode Manuel");
-#endif
-    lcd.clearDisplay();
-    lcd.setTextSize(2);
-    lcd.setCursor(0, 0);
-    lcd.println("Mode Manu.");
-    lcd.println("avant match");
-    lcd.display();
-    do {
-        setMode();
-        setManualPosition();
-        delay(500);
-    } while(mode != AUTO);
-
 	// Démarrage du comptage
     GP2D12Result distance;
 
 #ifdef DEBUG_MODE
 	Serial.println(" == DEBUT DU MATCH ==");
 #endif
-
-	// On efface l'écran
-	lcd.clearDisplay();
-	lcd.display();
-
-    // On met les servos en position init de match
-    initMatchServos();
 
     unsigned int startTime = millis();
     unsigned int heartTime;
@@ -264,39 +233,58 @@ int main() {
         // Lecture distance
         distance = distanceRobot();
 
-		// Affichage des informations de base
-		lcd.clearDisplay();
-        lcd.setTextSize(1);
-		lcd.setCursor(0,0);
-		lcd.print("T ");lcd.print((heartTime - startTime) / 1000);lcd.println(" s");
-        lcd.print("D ");lcd.print(distance.cm);lcd.println(" cm");
-        lcd.print("  ");lcd.print(distance.raw);lcd.println(" raw");
-        lcd.print("Nerell : ");lcd.println(nerell == PRESENT ? "PRESENT" : "PARTI");
-		lcd.display();
+        setMode();
+        if (mode == MANUEL) {
+            if (modePrec == AUTO && nerell == PARTI) {
+                heartBandeau = false;
+                heartTimeBandeauPrec = 0;
+                digitalWrite(BANDEAU_LED, LOW);
+            }
 
-        matchLoop(distance, startTime, heartTime);
+            modePrec = mode;
+            nerell = UNKNOWN;
+            lcd.clearDisplay();
+            lcd.setTextSize(2);
+            lcd.setCursor(0, 0);
+            lcd.println("Mode");
+            lcd.println("Manuel");
+            lcd.display();
 
-	} while(nerell == PRESENT || nerell == PARTI); // while(true); mais sans le warning de CLion
+            setManualPosition();
+        } else {
+            if (modePrec == MANUEL) {
+                initMatchServos();
+            }
+
+            modePrec = mode;
+
+            // Affichage des informations de base
+            lcd.clearDisplay();
+            lcd.setTextSize(1);
+            lcd.setCursor(0,0);
+            lcd.print("D ");lcd.print(distance.cm);lcd.println(" cm");
+            lcd.print("  ");lcd.print(distance.raw);lcd.println(" raw");
+            lcd.print("Nerell : ");lcd.println(nerell == PRESENT ? "PRESENT" : nerell == PARTI ? "PARTI" : "UNKNOWN");
+            lcd.display();
+
+            matchLoop(distance, heartTime);
+        }
+	} while(running); // while(true); mais sans le warning de CLion
 }
 
 // ---------------------------------------------------------------------------- //
 // Méthode appelé encore et encore, tant que le temps du match n'est pas écoulé //
 // ---------------------------------------------------------------------------- //
-void matchLoop(GP2D12Result distanceRobot, int startTime, int heartTime) {
-    if (distanceRobot.cm < SEUIL_PRESENCE_ROBOT) {
+void matchLoop(GP2D12Result distanceRobot, int heartTime) {
+    if (distanceRobot.cm <= SEUIL_PRESENCE_ROBOT && nerell == UNKNOWN) {
         nerell = PRESENT;
     } else if (distanceRobot.cm > SEUIL_PRESENCE_ROBOT && nerell == PRESENT) {
         nerell = PARTI;
-        nerellStartTime = heartTime;
         servoManager.setPosition(SERVO_ASC_NB, ASC_HAUT);
     }
 
     if (nerell == PARTI) {
         heartBeatBandeau(heartTime);
-
-        if (heartTime - nerellStartTime < 90000) {
-            pulseElectron(heartTime);
-        }
     }
 }
 
@@ -324,18 +312,6 @@ void heartBeatBandeau(int heartTime) {
         randTimeBandeau = random(100, 1000);
         digitalWrite(BANDEAU_LED, (heartBandeau) ? HIGH : LOW);
         heartBandeau = !heartBandeau;
-    }
-}
-
-void pulseElectron(int heartTime) {
-    if (heartTime - pulseTimeElectronPrec > 10000 && ascenseurMode == HAUT) {
-        pulseTimeElectronPrec = heartTime;
-        ascenseurMode = PULSE;
-        servoManager.setPosition(SERVO_ASC_NB, ASC_HAUT_MOINS);
-    } else if (heartTime - pulseTimeElectronPrec > 500 && ascenseurMode == PULSE) {
-        pulseTimeElectronPrec = heartTime;
-        ascenseurMode = HAUT;
-        servoManager.setPosition(SERVO_ASC_NB, ASC_HAUT);
     }
 }
 

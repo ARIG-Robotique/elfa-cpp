@@ -31,8 +31,7 @@
 
 // Valeur ascenseur electron
 #define SPEED_ASC          0
-#define ASC_HAUT           2190
-#define ASC_HAUT_MOINS     1970
+#define ASC_HAUT           2460
 #define ASC_BAS     	   700
 
 // --------------- //
@@ -50,6 +49,7 @@
 #define GP2D         		A0
 
 enum CheckRobot {
+    UNKNOWN,
     PARTI,
     PRESENT
 };
@@ -57,10 +57,6 @@ enum CheckRobot {
 enum Mode {
     AUTO,
     MANUEL
-};
-
-enum AscenseurMode {
-    HAUT, PULSE
 };
 
 struct GP2D12Result {
