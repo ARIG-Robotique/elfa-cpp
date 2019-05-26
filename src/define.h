@@ -30,7 +30,7 @@
 #define SERVO_ASC_NB       1
 
 // Valeur ascenseur electron
-#define SPEED_ASC          10
+#define SPEED_ASC          0
 #define ASC_HAUT           2190
 #define ASC_HAUT_MOINS     1970
 #define ASC_BAS     	   700
