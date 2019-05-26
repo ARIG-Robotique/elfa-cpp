@@ -34,7 +34,7 @@ endif()
 #====================================================================#
 
 project(ElfaRobot C CXX ASM)
-arduino_cmake_project(ElfaRobot BOARD_NAME nano BOARD_CPU atmega328)
+arduino_cmake_project(ElfaRobot BOARD_NAME megaADK BOARD_CPU atmega2560)
 
 # Build
 add_arduino_executable(ElfaRobot src/main.cpp src/define.h)
@@ -56,4 +56,4 @@ link_arduino_library(ElfaRobot AdafruitGFX)
 link_arduino_library(ElfaRobot AdafruitSSD1306)
 
 # Upload
-set_target_upload_port(ElfaRobot /dev/ttyUSB0)
+set_target_upload_port(ElfaRobot /dev/ttyACM0)
