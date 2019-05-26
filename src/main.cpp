@@ -13,14 +13,17 @@
 // Prototype des fonctions principale
 void setup();
 void progressSetup(String message, unsigned long delayMs = 500);
-void matchLoop(GP2D12Result distanceRobot);
+void matchLoop(GP2D12Result distanceRobot, int startTime, int heartTime);
 
 // Prototype des fonctions business
 bool hasAU();
 void setMode();
 void setManualPosition();
 void initMatchServos();
+void pulseElectron(int heartTime);
 GP2D12Result distanceRobot();
+void heartBeat(int heartTime);
+void heartBeatBandeau(int heartTime);
 
 // I2C Boards
 SD21 servoManager = SD21(SD21_ADD_BOARD);
@@ -28,6 +31,7 @@ Adafruit_SSD1306 lcd = Adafruit_SSD1306(OLED_RST);
 
 CheckRobot nerell = PARTI;
 Mode mode = MANUEL;
+AscenseurMode ascenseurMode = HAUT;
 
 int setupStep = 0;
 const int nbValues = 100;
@@ -35,6 +39,18 @@ int valuesRaw[nbValues] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+int nerellStartTime;
+
+// Heartbeat variables
+int heartTimePrec;
+boolean heart;
+
+int heartTimeBandeauPrec;
+boolean heartBandeau;
+int randTimeBandeau;
+
+int pulseTimeElectronPrec;
 
 // ------------------------------------------------------- //
 // ------------------------- MAIN ------------------------ //
@@ -125,6 +141,7 @@ void setup() {
 	// Inputs AVR analogique
     progressSetup("IN ana. AVR");
 	pinMode(GP2D, INPUT);
+    randomSeed(analogRead(A1)); // Génération de nombre aléatoire avec le bruit de la PIN ana 1
 #ifdef DEBUG_MODE
 	Serial.println(" - Inputs analogique AVR [OK]");
 #endif
@@ -133,6 +150,7 @@ void setup() {
     progressSetup("OUT num. AVR");
 	pinMode(LED_BUILTIN, OUTPUT);
 	pinMode(OLED_RST, OUTPUT);
+	pinMode(BANDEAU_LED, OUTPUT);
 
 #ifdef DEBUG_MODE
 	Serial.println(" - Outputs numérique AVR [OK]");
@@ -175,17 +193,14 @@ int main() {
         Serial.println("/!\\ AU KO");
 #endif
         lcd.clearDisplay();
-        lcd.setTextSize(4);
+        lcd.setTextSize(2);
         lcd.setCursor(0, 0);
         lcd.println("/!\\ AU KO");
         lcd.display();
-        delay(1000);
-        lcd.startscrollleft(0x00, 0x0F);
 
         while(!hasAU()) {
             delay(500);
         }
-        lcd.stopscroll();
         delay(1000);
     }
 
@@ -196,18 +211,16 @@ int main() {
         Serial.println("/!\\ Mode AUTO invalide au démarrage");
 #endif
         lcd.clearDisplay();
-        lcd.setTextSize(4);
+        lcd.setTextSize(2);
         lcd.setCursor(0, 0);
-        lcd.println("/!\\ Mode MANUEL attendu");
+        lcd.println("/!\\ Mode");
+        lcd.println("/!\\ MANUEL");
         lcd.display();
-        delay(1000);
-        lcd.startscrollleft(0x00, 0x0F);
 
         while(mode == AUTO) {
             setMode();
             delay(500);
         }
-        lcd.stopscroll();
         delay(1000);
     }
 
@@ -219,7 +232,8 @@ int main() {
     lcd.clearDisplay();
     lcd.setTextSize(2);
     lcd.setCursor(0, 0);
-    lcd.println("Mode Manuel");
+    lcd.println("Mode Manu.");
+    lcd.println("avant match");
     lcd.display();
     do {
         setMode();
@@ -241,7 +255,12 @@ int main() {
     // On met les servos en position init de match
     initMatchServos();
 
+    unsigned int startTime = millis();
+    unsigned int heartTime;
 	do {
+	    heartTime = millis();
+	    heartBeat(heartTime);
+
         // Lecture distance
         distance = distanceRobot();
 
@@ -249,12 +268,13 @@ int main() {
 		lcd.clearDisplay();
         lcd.setTextSize(1);
 		lcd.setCursor(0,0);
+		lcd.print("T ");lcd.print((heartTime - startTime) / 1000);lcd.println(" s");
         lcd.print("D ");lcd.print(distance.cm);lcd.println(" cm");
         lcd.print("  ");lcd.print(distance.raw);lcd.println(" raw");
         lcd.print("Nerell : ");lcd.println(nerell == PRESENT ? "PRESENT" : "PARTI");
 		lcd.display();
 
-        matchLoop(distance);
+        matchLoop(distance, startTime, heartTime);
 
 	} while(nerell == PRESENT || nerell == PARTI); // while(true); mais sans le warning de CLion
 }
@@ -262,18 +282,62 @@ int main() {
 // ---------------------------------------------------------------------------- //
 // Méthode appelé encore et encore, tant que le temps du match n'est pas écoulé //
 // ---------------------------------------------------------------------------- //
-void matchLoop(GP2D12Result distanceRobot) {
+void matchLoop(GP2D12Result distanceRobot, int startTime, int heartTime) {
     if (distanceRobot.cm < SEUIL_PRESENCE_ROBOT) {
         nerell = PRESENT;
     } else if (distanceRobot.cm > SEUIL_PRESENCE_ROBOT && nerell == PRESENT) {
         nerell = PARTI;
+        nerellStartTime = heartTime;
         servoManager.setPosition(SERVO_ASC_NB, ASC_HAUT);
+    }
+
+    if (nerell == PARTI) {
+        heartBeatBandeau(heartTime);
+
+        if (heartTime - nerellStartTime < 90000) {
+            pulseElectron(heartTime);
+        }
     }
 }
 
 // ------------------------------------------------------- //
 // -------------------- BUSINESS METHODS ----------------- //
 // ------------------------------------------------------- //
+
+/*
+ * Méthode pour le battement de coeur programme
+ */
+void heartBeat(int heartTime) {
+    if (heartTime - heartTimePrec > 1000) {
+        heartTimePrec = heartTime;
+        digitalWrite(LED_BUILTIN, (heart) ? HIGH : LOW);
+        heart = !heart;
+    }
+}
+
+/*
+ * Méthode pour le battement de coeur du beandeau de led
+ */
+void heartBeatBandeau(int heartTime) {
+    if (heartTime - heartTimeBandeauPrec > randTimeBandeau) {
+        heartTimeBandeauPrec = heartTime;
+        randTimeBandeau = random(100, 1000);
+        digitalWrite(BANDEAU_LED, (heartBandeau) ? HIGH : LOW);
+        heartBandeau = !heartBandeau;
+    }
+}
+
+void pulseElectron(int heartTime) {
+    if (heartTime - pulseTimeElectronPrec > 10000 && ascenseurMode == HAUT) {
+        pulseTimeElectronPrec = heartTime;
+        ascenseurMode = PULSE;
+        servoManager.setPosition(SERVO_ASC_NB, ASC_HAUT_MOINS);
+    } else if (heartTime - pulseTimeElectronPrec > 500 && ascenseurMode == PULSE) {
+        pulseTimeElectronPrec = heartTime;
+        ascenseurMode = HAUT;
+        servoManager.setPosition(SERVO_ASC_NB, ASC_HAUT);
+    }
+}
 
 bool hasAU() {
     return digitalRead(AU) == HIGH;
@@ -282,7 +346,7 @@ void setMode() {
     mode = digitalRead(SELECT_MODE) == HIGH ? AUTO : MANUEL;
 }
 void setManualPosition() {
-    if (digitalRead(SELECT_POSITION) == HIGH) {
+    if (digitalRead(SELECT_POSITION) == LOW) {
         servoManager.setPosition(SERVO_ASC_NB, ASC_BAS);
     } else {
         servoManager.setPosition(SERVO_ASC_NB, ASC_HAUT);

@@ -14,7 +14,7 @@
 
 #define MAX_RAW_GP            300
 #define MIN_RAW_GP            90
-#define SEUIL_PRESENCE_ROBOT  50 // En cm (a peu près vrai)
+#define SEUIL_PRESENCE_ROBOT  65 // En cm (a peu près vrai)
 
 // ---------------------- //
 // Adresse des cartes I2C //
@@ -27,12 +27,13 @@
 // ------------------------------- //
 // Configuration des servo moteurs //
 // ------------------------------- //
-#define SERVO_ASC_NB       6
+#define SERVO_ASC_NB       1
 
-// Valeur monte
-#define SPEED_ASC          0
-#define ASC_HAUT           1500
-#define ASC_BAS     	   1500
+// Valeur ascenseur electron
+#define SPEED_ASC          10
+#define ASC_HAUT           2190
+#define ASC_HAUT_MOINS     1970
+#define ASC_BAS     	   700
 
 // --------------- //
 // IO des capteurs //
@@ -40,6 +41,7 @@
 
 // Output
 #define OLED_RST       		4
+#define BANDEAU_LED         8
 
 // Input
 #define AU                  15
@@ -55,6 +57,10 @@ enum CheckRobot {
 enum Mode {
     AUTO,
     MANUEL
+};
+
+enum AscenseurMode {
+    HAUT, PULSE
 };
 
 struct GP2D12Result {
