@@ -49,6 +49,8 @@ extern "C" {
 /* USER CODE BEGIN EM */
 /* USER CODE END EM */
 
+void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
+
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);
 
@@ -57,16 +59,16 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define Blue_PushButton_Pin GPIO_PIN_13
-#define Blue_PushButton_GPIO_Port GPIOC
+#define BluePushButton_Pin GPIO_PIN_13
+#define BluePushButton_GPIO_Port GPIOC
+#define NeopixelSignal_Pin GPIO_PIN_0
+#define NeopixelSignal_GPIO_Port GPIOA
 #define USART_TX_Pin GPIO_PIN_2
 #define USART_TX_GPIO_Port GPIOA
 #define USART_RX_Pin GPIO_PIN_3
 #define USART_RX_GPIO_Port GPIOA
-#define Green_Led_Pin GPIO_PIN_5
-#define Green_Led_GPIO_Port GPIOA
-#define SERVO_Pin GPIO_PIN_7
-#define SERVO_GPIO_Port GPIOC
+#define GreenLedOnBoard_Pin GPIO_PIN_5
+#define GreenLedOnBoard_GPIO_Port GPIOA
 #define TMS_Pin GPIO_PIN_13
 #define TMS_GPIO_Port GPIOA
 #define TCK_Pin GPIO_PIN_14
