@@ -1,21 +1,21 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * <h2><center>&copy; Copyright (c) 2019 STMicroelectronics.
-  * All rights reserved.</center></h2>
-  *
-  * This software component is licensed by ST under BSD 3-Clause license,
-  * the "License"; You may not use this file except in compliance with the
-  * License. You may obtain a copy of the License at:
-  *                        opensource.org/licenses/BSD-3-Clause
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file           : main.c
+ * @brief          : Main program body
+ ******************************************************************************
+ * @attention
+ *
+ * <h2><center>&copy; Copyright (c) 2019 STMicroelectronics.
+ * All rights reserved.</center></h2>
+ *
+ * This software component is licensed by ST under BSD 3-Clause license,
+ * the "License"; You may not use this file except in compliance with the
+ * License. You may obtain a copy of the License at:
+ *                        opensource.org/licenses/BSD-3-Clause
+ *
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 
 /* Includes ------------------------------------------------------------------*/
@@ -24,7 +24,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "ssd1306_tests.h"
+#include "ssd1306.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -70,12 +70,17 @@ void StartRefreshLedsTask(void *argument);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-void init() {
-    ssd1306_TestAll();
-}
+void initScreen() {
+  ssd1306_Init();
 
-void loop() {
-    HAL_Delay(100);
+  ssd1306_Fill(Black);
+  ssd1306_SetCursor(2, 0);
+  ssd1306_WriteString("ARIG", Font_11x18, White);
+  ssd1306_SetCursor(2, 18);
+  ssd1306_WriteString("Robotique", Font_7x10, White);
+  ssd1306_SetCursor(2, 28);
+  ssd1306_WriteString("STM32 Powa !", Font_7x10, White);
+  ssd1306_UpdateScreen();
 }
 
 /* USER CODE END 0 */
@@ -114,6 +119,8 @@ int main(void)
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 
+  initScreen();
+
   /* USER CODE END 2 */
 
   osKernelInitialize();
@@ -125,11 +132,11 @@ int main(void)
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
   /* USER CODE END RTOS_SEMAPHORES */
-  
+
   /* USER CODE BEGIN RTOS_TIMERS */
   /* start timers, add new ones, ... */
   /* USER CODE END RTOS_TIMERS */
-  
+
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
@@ -162,13 +169,11 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  init();
   while (1)
   {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    loop();
   }
   /* USER CODE END 3 */
 }
@@ -376,17 +381,16 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN Header_StartMainTask */
 /**
-  * @brief  Function implementing the mainTask thread.
-  * @param  argument: Not used 
-  * @retval None
-  */
+ * @brief  Function implementing the mainTask thread.
+ * @param  argument: Not used
+ * @retval None
+ */
 /* USER CODE END Header_StartMainTask */
 void StartMainTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
   /* Infinite loop */
-  for(;;)
-  {
+  while (1) {
     osDelay(1);
   }
   /* USER CODE END 5 */ 
@@ -394,17 +398,16 @@ void StartMainTask(void *argument)
 
 /* USER CODE BEGIN Header_StartRefreshLedsTask */
 /**
-* @brief Function implementing the refreshLedsTask thread.
-* @param argument: Not used
-* @retval None
-*/
+ * @brief Function implementing the refreshLedsTask thread.
+ * @param argument: Not used
+ * @retval None
+ */
 /* USER CODE END Header_StartRefreshLedsTask */
 void StartRefreshLedsTask(void *argument)
 {
   /* USER CODE BEGIN StartRefreshLedsTask */
   /* Infinite loop */
-  for(;;)
-  {
+  while (1) {
     osDelay(1);
   }
   /* USER CODE END StartRefreshLedsTask */

@@ -4,7 +4,7 @@ dist: bionic
 
 install:
   - sudo apt-get update
-  - sudo apt-get install -y gcc-arm-none-eabi build-essential
+  - sudo apt-get install -y gcc-arm-none-eabi symlinks build-essential
 
 script:
   - mkdir build
