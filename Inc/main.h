@@ -59,6 +59,7 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define WS2812_FREQ 800000
 #define BluePushButton_Pin GPIO_PIN_13
 #define BluePushButton_GPIO_Port GPIOC
 #define NeopixelSignal_Pin GPIO_PIN_0
