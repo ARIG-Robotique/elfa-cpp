@@ -4,7 +4,7 @@ dist: bionic
 
 install:
   - sudo apt-get update
-  - sudo apt-get install -y gcc-arm-none-eabi symlinks build-essential
+  - sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib mc openocd build-essential
 
 script:
   - mkdir build
