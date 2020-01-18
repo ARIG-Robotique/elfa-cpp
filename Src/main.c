@@ -24,7 +24,9 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "ssd1306.h"
+#include <WS2812.h>
+#include <ssd1306.h>
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -48,9 +50,11 @@ I2C_HandleTypeDef hi2c1;
 TIM_HandleTypeDef htim2;
 DMA_HandleTypeDef hdma_tim2_ch1;
 
-osThreadId_t mainTaskHandle;
-osThreadId_t refreshLedsTaskHandle;
+osThreadId heartBeatTaskHandle;
+osThreadId ledsUpdateTaskHandle;
 /* USER CODE BEGIN PV */
+
+TIM_OC_InitTypeDef htim2Config;
 
 /* USER CODE END PV */
 
@@ -60,8 +64,8 @@ static void MX_GPIO_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_DMA_Init(void);
 static void MX_TIM2_Init(void);
-void StartMainTask(void *argument);
-void StartRefreshLedsTask(void *argument);
+void heartBeat(void const * argument);
+void ledsUpdate(void const * argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -69,19 +73,6 @@ void StartRefreshLedsTask(void *argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
-void initScreen() {
-  ssd1306_Init();
-
-  ssd1306_Fill(Black);
-  ssd1306_SetCursor(2, 0);
-  ssd1306_WriteString("ARIG", Font_11x18, White);
-  ssd1306_SetCursor(2, 18);
-  ssd1306_WriteString("Robotique", Font_7x10, White);
-  ssd1306_SetCursor(2, 28);
-  ssd1306_WriteString("STM32 Powa !", Font_7x10, White);
-  ssd1306_UpdateScreen();
-}
 
 /* USER CODE END 0 */
 
@@ -119,11 +110,7 @@ int main(void)
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 
-  initScreen();
-
   /* USER CODE END 2 */
-
-  osKernelInitialize();
 
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
@@ -142,21 +129,13 @@ int main(void)
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
-  /* definition and creation of mainTask */
-  const osThreadAttr_t mainTask_attributes = {
-    .name = "mainTask",
-    .priority = (osPriority_t) osPriorityNormal,
-    .stack_size = 128
-  };
-  mainTaskHandle = osThreadNew(StartMainTask, NULL, &mainTask_attributes);
+  /* definition and creation of heartBeatTask */
+  osThreadDef(heartBeatTask, heartBeat, osPriorityIdle, 0, 128);
+  heartBeatTaskHandle = osThreadCreate(osThread(heartBeatTask), NULL);
 
-  /* definition and creation of refreshLedsTask */
-  const osThreadAttr_t refreshLedsTask_attributes = {
-    .name = "refreshLedsTask",
-    .priority = (osPriority_t) osPriorityLow,
-    .stack_size = 128
-  };
-  refreshLedsTaskHandle = osThreadNew(StartRefreshLedsTask, NULL, &refreshLedsTask_attributes);
+  /* definition and creation of ledsUpdateTask */
+  osThreadDef(ledsUpdateTask, ledsUpdate, osPriorityRealtime, 0, 128);
+  ledsUpdateTaskHandle = osThreadCreate(osThread(ledsUpdateTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -164,13 +143,12 @@ int main(void)
 
   /* Start scheduler */
   osKernelStart();
-  
+ 
   /* We should never get here as control is now taken by the scheduler */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+  while (1) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -313,6 +291,8 @@ static void MX_TIM2_Init(void)
   }
   /* USER CODE BEGIN TIM2_Init 2 */
 
+  htim2Config = sConfigOC;
+
   /* USER CODE END TIM2_Init 2 */
   HAL_TIM_MspPostInit(&htim2);
 
@@ -345,9 +325,11 @@ static void MX_GPIO_Init(void)
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOC_CLK_ENABLE();
-  __HAL_RCC_GPIOF_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GreenLed_GPIO_Port, GreenLed_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : BluePushButton_Pin */
   GPIO_InitStruct.Pin = BluePushButton_Pin;
@@ -355,13 +337,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(BluePushButton_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : USART_TX_Pin USART_RX_Pin */
-  GPIO_InitStruct.Pin = USART_TX_Pin|USART_RX_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  /*Configure GPIO pin : GreenLed_Pin */
+  GPIO_InitStruct.Pin = GreenLed_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  GPIO_InitStruct.Alternate = GPIO_AF7_USART2;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  HAL_GPIO_Init(GreenLed_GPIO_Port, &GPIO_InitStruct);
 
 }
 
@@ -369,38 +350,90 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE END 4 */
 
-/* USER CODE BEGIN Header_StartMainTask */
+/* USER CODE BEGIN Header_heartBeat */
 /**
- * @brief  Function implementing the mainTask thread.
+ * @brief  Function implementing the heartBeatTask thread.
  * @param  argument: Not used
  * @retval None
  */
-/* USER CODE END Header_StartMainTask */
-void StartMainTask(void *argument)
+/* USER CODE END Header_heartBeat */
+void heartBeat(void const * argument)
 {
   /* USER CODE BEGIN 5 */
+  int elaspedTime = 0;
+
+  // Init screen
+  ssd1306_Init();
+
   /* Infinite loop */
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wmissing-noreturn"
   while (1) {
-    osDelay(1);
+    HAL_GPIO_TogglePin(GreenLed_GPIO_Port, GreenLed_Pin);
+
+    SSD1306_COLOR backColor = elaspedTime % 2 ? Black : White;
+    SSD1306_COLOR fontColor = elaspedTime % 2 ? White : Black;
+    ssd1306_Fill(backColor);
+    ssd1306_SetCursor(2, 0);
+    ssd1306_WriteString("ARIG", Font_11x18, fontColor);
+    ssd1306_SetCursor(2, 18);
+    ssd1306_WriteString("Robotique", Font_7x10, fontColor);
+    ssd1306_SetCursor(2, 28);
+    char buffer[50];
+    sprintf(buffer, "Time : %i s", elaspedTime);
+    ssd1306_WriteString(buffer, Font_7x10, fontColor);
+    ssd1306_UpdateScreen();
+
+    osDelay(1000);
+    elaspedTime++;
   }
+#pragma clang diagnostic pop
   /* USER CODE END 5 */ 
 }
 
-/* USER CODE BEGIN Header_StartRefreshLedsTask */
+/* USER CODE BEGIN Header_ledsUpdate */
 /**
- * @brief Function implementing the refreshLedsTask thread.
+ * @brief Function implementing the ledsUpdateTask thread.
  * @param argument: Not used
  * @retval None
  */
-/* USER CODE END Header_StartRefreshLedsTask */
-void StartRefreshLedsTask(void *argument)
+/* USER CODE END Header_ledsUpdate */
+void ledsUpdate(void const * argument)
 {
-  /* USER CODE BEGIN StartRefreshLedsTask */
+  /* USER CODE BEGIN ledsUpdate */
+  int ledIndex = 1, ledIndexPrev, ledIndexSuiv;
+
+  // Init LEDs
+  ws2812_init();
+  ws2812_setAllLedsColor(0, 0, 0);
+
   /* Infinite loop */
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wmissing-noreturn"
   while (1) {
-    osDelay(1);
+    ledIndexSuiv = ledIndex + 1;
+    if (ledIndexSuiv >= LED_NUMBER) {
+      ledIndexSuiv = 0;
+    }
+    ledIndexPrev = ledIndex - 1;
+    if (ledIndexPrev < 0) {
+      ledIndexPrev = LED_NUMBER - 1;
+    }
+
+    ws2812_setAllLedsColor(0,0,0);
+    ws2812_setLedColor(ledIndexPrev, 40, 0, 40);
+    ws2812_setLedColor(ledIndex, 0, 0, 127);
+    ws2812_setLedColor(ledIndexSuiv, 40, 0, 40);
+
+    ledIndex++;
+    if (ledIndex >= LED_NUMBER) {
+      ledIndex = 0;
+    }
+
+    osDelay(100);
   }
-  /* USER CODE END StartRefreshLedsTask */
+#pragma clang diagnostic pop
+  /* USER CODE END ledsUpdate */
 }
 
 /**
@@ -447,8 +480,10 @@ void Error_Handler(void)
 void assert_failed(char *file, uint32_t line)
 { 
   /* USER CODE BEGIN 6 */
-  /* User can add his own implementation to report the file name and line number,
-     tex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+  /* User can add his own implementation to report the file name and line
+     number,
+     tex: printf("Wrong parameters value: file %s on line %d\r\n", file, line)
+   */
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
