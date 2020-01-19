@@ -372,6 +372,32 @@ void heartBeat(void const * argument)
   // Init screen
   ssd1306_Init();
 
+  ssd1306_Fill(Black);
+  ssd1306_SetCursor(2, 0);
+  ssd1306_WriteString("Scan I2C bus :", Font_7x10, White);
+
+  HAL_StatusTypeDef result;
+  uint8_t i, nbDevice = 0;
+  for (i=1; i<128; i++) {
+    /*
+     * the HAL wants a left aligned i2c address
+     * &hi2c1 is the handle
+     * (uint16_t)(i<<1) is the i2c address left aligned
+     * retries 2
+     * timeout 2
+     */
+    result = HAL_I2C_IsDeviceReady(&hi2c1, (uint16_t)(i<<1), 2, 2);
+    if (result == HAL_OK) {
+      char buf[10];
+      sprintf(buf, "Add 0x%X", i); // Received an ACK at that address
+      ssd1306_SetCursor(2, (nbDevice + 1) * 10);
+      ssd1306_WriteString(buf, Font_7x10, White);
+      nbDevice++;
+    }
+  }
+  ssd1306_UpdateScreen();
+  osDelay(10000);
+
   /* Infinite loop */
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
