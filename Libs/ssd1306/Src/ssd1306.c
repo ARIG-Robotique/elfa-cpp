@@ -1,4 +1,4 @@
-#include "../Inc/ssd1306.h"
+#include "ssd1306.h"
 
 #if defined(SSD1306_USE_I2C)
 

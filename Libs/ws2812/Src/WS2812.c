@@ -1,5 +1,5 @@
 //
-// Created by gregorydepuille@sglk.local on 17/01/2020.
+// Created by gdepuille on 17/01/2020.
 //
 
 #include "WS2812.h"
@@ -7,23 +7,26 @@
 extern TIM_HandleTypeDef htim2;
 extern TIM_OC_InitTypeDef htim2Config;
 
-void ws2812_init() {
+void ws2812_fillBufferBlack(void);
+void ws2812_fillBufferWhite(void);
+
+void ws2812_Init() {
   ws2812_fillBufferBlack();
-  ws2812_update();
+  ws2812_Update();
 }
 
-void ws2812_update() {
+void ws2812_Update() {
   HAL_TIM_PWM_ConfigChannel(&htim2, &htim2Config, TIM_CHANNEL_1);
   HAL_TIM_PWM_Start_DMA(&htim2, TIM_CHANNEL_1, (uint32_t *) LedBuffer, LED_BUFFER_SIZE);
 }
 
-void ws2812_setAllLedsColor(uint8_t red, uint8_t green, uint8_t blue) {
+void ws2812_SetAllLedsColor(uint8_t red, uint8_t green, uint8_t blue) {
   for (uint32_t idx = 0 ; idx < LED_NUMBER ; idx++) {
-    ws2812_setLedColor(idx, red, green, blue);
+    ws2812_SetLedColor(idx, red, green, blue);
   }
 }
 
-void ws2812_setLedColor(uint32_t ledNumber, uint8_t red, uint8_t green,
+void ws2812_SetLedColor(uint32_t ledNumber, uint8_t red, uint8_t green,
                          uint8_t blue) {
   uint8_t tempBuffer[24];
   uint32_t i;

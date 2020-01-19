@@ -404,8 +404,8 @@ void ledsUpdate(void const * argument)
   int ledIndex = 1, ledIndexPrev, ledIndexSuiv;
 
   // Init LEDs
-  ws2812_init();
-  ws2812_setAllLedsColor(0, 0, 0);
+  ws2812_Init();
+  ws2812_SetAllLedsColor(0, 0, 0);
 
   /* Infinite loop */
 #pragma clang diagnostic push
@@ -420,10 +420,10 @@ void ledsUpdate(void const * argument)
       ledIndexPrev = LED_NUMBER - 1;
     }
 
-    ws2812_setAllLedsColor(0,0,0);
-    ws2812_setLedColor(ledIndexPrev, 40, 0, 40);
-    ws2812_setLedColor(ledIndex, 0, 0, 127);
-    ws2812_setLedColor(ledIndexSuiv, 40, 0, 40);
+    ws2812_SetAllLedsColor(0, 0, 0);
+    ws2812_SetLedColor(ledIndexPrev, 40, 0, 40);
+    ws2812_SetLedColor(ledIndex, 0, 0, 127);
+    ws2812_SetLedColor(ledIndexSuiv, 40, 0, 40);
 
     ledIndex++;
     if (ledIndex >= LED_NUMBER) {
