@@ -1,12 +1,17 @@
 //
-// Created by gregorydepuille@sglk.local on 17/01/2020.
+// Created by gdepuille on 17/01/2020.
 //
 
 #ifndef _WS2812_H
 #define _WS2812_H
 
 #include <stdint.h>
+
+#if defined(STM32F3)
 #include "stm32f3xx_hal.h"
+#else
+ #error "WS2812 library was tested only on STM32F3 MCU families. Please modify WS2812.h if you know what you are doing"
+#endif
 
 #define WS2812_FREQ		800000 // it is fixed: WS2812 require 800kHz
 #define TIMER_CLOCK_FREQ	16000000 // can be modified - multiples of 0.8MHz are suggested
@@ -23,15 +28,12 @@
 
 static uint8_t LedBuffer[LED_BUFFER_SIZE];
 
-void ws2812_init(void);
-void ws2812_update(void);
+void ws2812_Init(void);
+void ws2812_Update(void);
 
-void ws2812_setLedColor(uint32_t ledNumber, uint8_t red, uint8_t green, uint8_t blue);
-void ws2812_setAllLedsColor(uint8_t red, uint8_t green, uint8_t blue);
+void ws2812_SetLedColor(uint32_t ledNumber, uint8_t red, uint8_t green, uint8_t blue);
+void ws2812_SetAllLedsColor(uint8_t red, uint8_t green, uint8_t blue);
 
 //void ws2812_effectCircularRing(uint32_t interval, uint8_t red, uint8_t green, uint8_t blue);
-
-void ws2812_fillBufferBlack(void);
-void ws2812_fillBufferWhite(void);
 
 #endif // _WS2812_H
