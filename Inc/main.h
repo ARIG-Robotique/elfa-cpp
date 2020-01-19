@@ -43,6 +43,16 @@ extern "C" {
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
 
+// ------------------------------- //
+// Configuration des servo moteurs //
+// ------------------------------- //
+#define SERVO_ASC_NB       1
+
+// Valeur ascenseur electron
+#define SPEED_ASC          0
+#define ASC_HAUT           2460
+#define ASC_BAS     	   700
+
 /* USER CODE END EC */
 
 /* Exported macro ------------------------------------------------------------*/

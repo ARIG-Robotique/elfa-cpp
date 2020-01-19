@@ -26,6 +26,7 @@
 /* USER CODE BEGIN Includes */
 #include <WS2812.h>
 #include <ssd1306.h>
+#include <SD21.h>
 #include <stdio.h>
 /* USER CODE END Includes */
 
@@ -52,6 +53,7 @@ DMA_HandleTypeDef hdma_tim2_ch1;
 
 osThreadId heartBeatTaskHandle;
 osThreadId ledsUpdateTaskHandle;
+osThreadId servoTaskHandle;
 /* USER CODE BEGIN PV */
 
 TIM_OC_InitTypeDef htim2Config;
@@ -66,6 +68,7 @@ static void MX_DMA_Init(void);
 static void MX_TIM2_Init(void);
 void heartBeat(void const * argument);
 void ledsUpdate(void const * argument);
+void servo(void const * argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -136,6 +139,10 @@ int main(void)
   /* definition and creation of ledsUpdateTask */
   osThreadDef(ledsUpdateTask, ledsUpdate, osPriorityRealtime, 0, 128);
   ledsUpdateTaskHandle = osThreadCreate(osThread(ledsUpdateTask), NULL);
+
+  /* definition and creation of servoTask */
+  osThreadDef(servoTask, servo, osPriorityNormal, 0, 128);
+  servoTaskHandle = osThreadCreate(osThread(servoTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -379,6 +386,8 @@ void heartBeat(void const * argument)
     ssd1306_SetCursor(2, 18);
     ssd1306_WriteString("Robotique", Font_7x10, fontColor);
     ssd1306_SetCursor(2, 28);
+    ssd1306_WriteString("Elfa STM32 Version", Font_7x10, fontColor);
+    ssd1306_SetCursor(2, 38);
     char buffer[50];
     sprintf(buffer, "Time : %i s", elaspedTime);
     ssd1306_WriteString(buffer, Font_7x10, fontColor);
@@ -434,6 +443,40 @@ void ledsUpdate(void const * argument)
   }
 #pragma clang diagnostic pop
   /* USER CODE END ledsUpdate */
+}
+
+/* USER CODE BEGIN Header_servo */
+/**
+* @brief Function implementing the servoTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_servo */
+void servo(void const * argument)
+{
+  /* USER CODE BEGIN servo */
+  uint8_t toggle = 0;
+
+  sd21_SetPositionAndSpeed(SERVO_ASC_NB, SPEED_ASC, ASC_BAS);
+
+  /* Infinite loop */
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wmissing-noreturn"
+  while (1) {
+    if (toggle) {
+      toggle = 0;
+
+      sd21_SetPosition(SERVO_ASC_NB, ASC_BAS);
+    } else {
+      toggle = 1;
+
+      sd21_SetPosition(SERVO_ASC_NB, ASC_HAUT);
+    }
+
+    osDelay(1500);
+  }
+#pragma clang diagnostic pop
+  /* USER CODE END servo */
 }
 
 /**
