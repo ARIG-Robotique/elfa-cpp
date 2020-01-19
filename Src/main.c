@@ -400,7 +400,19 @@ void heartBeat(void const * argument)
     }
   }
   ssd1306_UpdateScreen();
-  osDelay(10000);
+  osDelay(2000);
+
+  uint8_t sd21Version = sd21_GetVersion();
+
+  char buf[10];
+  sprintf(buf, "SD21 v %i", sd21Version);
+
+  ssd1306_Fill(Black);
+  ssd1306_SetCursor(2, 0);
+  ssd1306_WriteString(buf, Font_7x10, White);
+  ssd1306_UpdateScreen();
+
+  osDelay(2000);
 
   vTaskResume(ledsUpdateTaskHandle);
   vTaskResume(servoTaskHandle);
