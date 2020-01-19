@@ -518,7 +518,7 @@ void servo(void const * argument)
       sd21_SetPosition(SERVO_ASC_NB, ASC_HAUT);
     }
 
-    osDelay(1500);
+    osDelay(5000);
   }
 #pragma clang diagnostic pop
   /* USER CODE END servo */
