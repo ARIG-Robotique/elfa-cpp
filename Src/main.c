@@ -146,6 +146,10 @@ int main(void)
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
+
+  vTaskSuspend(ledsUpdateTaskHandle);
+  vTaskSuspend(servoTaskHandle);
+
   /* USER CODE END RTOS_THREADS */
 
   /* Start scheduler */
@@ -397,6 +401,9 @@ void heartBeat(void const * argument)
   }
   ssd1306_UpdateScreen();
   osDelay(10000);
+
+  vTaskResume(ledsUpdateTaskHandle);
+  vTaskResume(servoTaskHandle);
 
   /* Infinite loop */
 #pragma clang diagnostic push
