@@ -37,9 +37,9 @@ set(CMAKE_CXX_STANDARD 11)
 #add_definitions(-DARM_MATH_CM4 -DARM_MATH_MATRIX_CHECK -DARM_MATH_ROUNDING -D__FPU_PRESENT=1)
 add_definitions(-DUSE_HAL_DRIVER -DSTM32F303xE -DSSD1306_USE_I2C -DSTM32F3)
 
-file(GLOB_RECURSE SOURCES "Middlewares/*.*" "startup/*.*" "Drivers/*.*" "Src/*.*" "Libs/ssd1306/*.*" "Libs/ws2812/*.*")
+file(GLOB_RECURSE SOURCES "Middlewares/*.*" "startup/*.*" "Drivers/*.*" "Src/*.*" "Libs/ssd1306/*.*" "Libs/ws2812/*.*" "Libs/sd21/*.*")
 
-include_directories(Inc Drivers/STM32F3xx_HAL_Driver/Inc Drivers/STM32F3xx_HAL_Driver/Inc/Legacy Drivers/CMSIS/Device/ST/STM32F3xx/Include Drivers/CMSIS/Include Middlewares/Third_Party/FreeRTOS/Source/include Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F "Libs/ssd1306/Inc" "Libs/ws2812/Inc")
+include_directories(Inc Drivers/STM32F3xx_HAL_Driver/Inc Drivers/STM32F3xx_HAL_Driver/Inc/Legacy Drivers/CMSIS/Device/ST/STM32F3xx/Include Drivers/CMSIS/Include Middlewares/Third_Party/FreeRTOS/Source/include Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F "Libs/ssd1306/Inc" "Libs/ws2812/Inc" "Libs/sd21/Inc")
 
 add_executable(${PROJECT_NAME}.elf ${SOURCES} ${LINKER_SCRIPT})
 
