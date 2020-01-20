@@ -415,7 +415,7 @@ void heartBeat(void const * argument)
   osDelay(2000);
 
   vTaskResume(ledsUpdateTaskHandle);
-  vTaskResume(servoTaskHandle);
+  //vTaskResume(servoTaskHandle);
 
   /* Infinite loop */
 #pragma clang diagnostic push
@@ -456,6 +456,7 @@ void ledsUpdate(void const * argument)
 {
   /* USER CODE BEGIN ledsUpdate */
   int ledIndex = 1, ledIndexPrev, ledIndexSuiv;
+  int ledIndex2 = 7, ledIndex2Prev, ledIndex2Suiv;
 
   // Init LEDs
   ws2812_Init();
@@ -469,22 +470,38 @@ void ledsUpdate(void const * argument)
     if (ledIndexSuiv >= LED_NUMBER) {
       ledIndexSuiv = 0;
     }
+    ledIndex2Suiv = ledIndex2 + 1;
+    if (ledIndex2Suiv >= LED_NUMBER) {
+      ledIndex2Suiv = 0;
+    }
     ledIndexPrev = ledIndex - 1;
     if (ledIndexPrev < 0) {
       ledIndexPrev = LED_NUMBER - 1;
     }
+    ledIndex2Prev = ledIndex2 -1;
+    if (ledIndex2Prev < 0) {
+      ledIndex2Prev = LED_NUMBER - 1;
+    }
 
     ws2812_SetAllLedsColor(0, 0, 0);
-    ws2812_SetLedColor(ledIndexPrev, 40, 0, 40);
-    ws2812_SetLedColor(ledIndex, 0, 0, 127);
-    ws2812_SetLedColor(ledIndexSuiv, 40, 0, 40);
+    //ws2812_SetLedColor(ledIndexPrev, 10, 0, 0);
+    ws2812_SetLedColor(ledIndex, 0, 10, 0);
+    //ws2812_SetLedColor(ledIndexSuiv, 10, 0, 0);
+
+    //ws2812_SetLedColor(ledIndex2Prev, 10, 0, 0);
+    ws2812_SetLedColor(ledIndex2, 10, 0, 0);
+    //ws2812_SetLedColor(ledIndex2Suiv, 10, 0, 0);
 
     ledIndex++;
+    ledIndex2--;
     if (ledIndex >= LED_NUMBER) {
       ledIndex = 0;
     }
+    if (ledIndex2 < 0) {
+      ledIndex2 = LED_NUMBER - 1;
+    }
 
-    osDelay(100);
+    osDelay(200);
   }
 #pragma clang diagnostic pop
   /* USER CODE END ledsUpdate */
