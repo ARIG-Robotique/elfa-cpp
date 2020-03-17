@@ -25,9 +25,10 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <WS2812.h>
-#include <ssd1306.h>
+//#include <ssd1306.h>
 #include <SD21.h>
 #include <stdio.h>
+#include <stdbool.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -51,10 +52,16 @@ I2C_HandleTypeDef hi2c1;
 TIM_HandleTypeDef htim2;
 DMA_HandleTypeDef hdma_tim2_ch1;
 
+UART_HandleTypeDef huart2;
+
 osThreadId heartBeatTaskHandle;
 osThreadId ledsUpdateTaskHandle;
 osThreadId servoTaskHandle;
+osThreadId mainProcessTaskHandle;
 /* USER CODE BEGIN PV */
+
+LedsState ledsState = LEDS_BLANK;
+int ascenseurPosition = ASC_BAS;
 
 TIM_OC_InitTypeDef htim2Config;
 
@@ -66,11 +73,21 @@ static void MX_GPIO_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_DMA_Init(void);
 static void MX_TIM2_Init(void);
+static void MX_USART2_UART_Init(void);
 void heartBeat(void const * argument);
 void ledsUpdate(void const * argument);
 void servo(void const * argument);
+void mainProcess(void const * argument);
 
 /* USER CODE BEGIN PFP */
+
+void initialisation();
+
+bool positionPhare();
+
+bool auDebloque();
+
+bool declenchementRobot();
 
 /* USER CODE END PFP */
 
@@ -111,24 +128,25 @@ int main(void)
   MX_I2C1_Init();
   MX_DMA_Init();
   MX_TIM2_Init();
+  MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
 
   /* USER CODE BEGIN RTOS_MUTEX */
-  /* add mutexes, ... */
+    /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
-  /* add semaphores, ... */
+    /* add semaphores, ... */
   /* USER CODE END RTOS_SEMAPHORES */
 
   /* USER CODE BEGIN RTOS_TIMERS */
-  /* start timers, add new ones, ... */
+    /* start timers, add new ones, ... */
   /* USER CODE END RTOS_TIMERS */
 
   /* USER CODE BEGIN RTOS_QUEUES */
-  /* add queues, ... */
+    /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
@@ -141,14 +159,15 @@ int main(void)
   ledsUpdateTaskHandle = osThreadCreate(osThread(ledsUpdateTask), NULL);
 
   /* definition and creation of servoTask */
-  osThreadDef(servoTask, servo, osPriorityNormal, 0, 128);
+  osThreadDef(servoTask, servo, osPriorityIdle, 0, 128);
   servoTaskHandle = osThreadCreate(osThread(servoTask), NULL);
 
-  /* USER CODE BEGIN RTOS_THREADS */
-  /* add threads, ... */
+  /* definition and creation of mainProcessTask */
+  osThreadDef(mainProcessTask, mainProcess, osPriorityNormal, 0, 128);
+  mainProcessTaskHandle = osThreadCreate(osThread(mainProcessTask), NULL);
 
-  vTaskSuspend(ledsUpdateTaskHandle);
-  vTaskSuspend(servoTaskHandle);
+  /* USER CODE BEGIN RTOS_THREADS */
+    /* add threads, ... */
 
   /* USER CODE END RTOS_THREADS */
 
@@ -159,11 +178,11 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1) {
+    while (1) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-  }
+    }
   /* USER CODE END 3 */
 }
 
@@ -203,7 +222,9 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_I2C1|RCC_PERIPHCLK_TIM2;
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART2|RCC_PERIPHCLK_I2C1
+                              |RCC_PERIPHCLK_TIM2;
+  PeriphClkInit.Usart2ClockSelection = RCC_USART2CLKSOURCE_PCLK1;
   PeriphClkInit.I2c1ClockSelection = RCC_I2C1CLKSOURCE_HSI;
   PeriphClkInit.Tim2ClockSelection = RCC_TIM2CLK_HCLK;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
@@ -274,7 +295,7 @@ static void MX_TIM2_Init(void)
   TIM_OC_InitTypeDef sConfigOC = {0};
 
   /* USER CODE BEGIN TIM2_Init 1 */
-  htim2.Init.RepetitionCounter = LED_BUFFER_SIZE + 1;
+    htim2.Init.RepetitionCounter = LED_BUFFER_SIZE + 1;
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = (uint32_t)( (SystemCoreClock / TIMER_CLOCK_FREQ) - 1);
@@ -302,10 +323,45 @@ static void MX_TIM2_Init(void)
   }
   /* USER CODE BEGIN TIM2_Init 2 */
 
-  htim2Config = sConfigOC;
+    htim2Config = sConfigOC;
 
   /* USER CODE END TIM2_Init 2 */
   HAL_TIM_MspPostInit(&htim2);
+
+}
+
+/**
+  * @brief USART2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART2_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART2_Init 0 */
+
+  /* USER CODE END USART2_Init 0 */
+
+  /* USER CODE BEGIN USART2_Init 1 */
+
+  /* USER CODE END USART2_Init 1 */
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 115200;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart2.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart2.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART2_Init 2 */
+
+  /* USER CODE END USART2_Init 2 */
 
 }
 
@@ -355,9 +411,110 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GreenLed_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pins : DeclenchementRobot_Pin PositionPhare_Pin */
+  GPIO_InitStruct.Pin = DeclenchementRobot_Pin|PositionPhare_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : ArretUrgence_Pin */
+  GPIO_InitStruct.Pin = ArretUrgence_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(ArretUrgence_GPIO_Port, &GPIO_InitStruct);
+
 }
 
 /* USER CODE BEGIN 4 */
+
+void initialisation() {
+    // Init screen
+    //ssd1306_Init();
+
+    //ssd1306_Fill(Black);
+    //ssd1306_SetCursor(2, 0);
+    //ssd1306_WriteString("Scan I2C bus :", Font_7x10, White);
+
+    HAL_StatusTypeDef result;
+    uint8_t i, nbDevice = 0;
+    for (i = 1; i < 128; i++) {
+        /*
+         * the HAL wants a left aligned i2c address
+         * &hi2c1 is the handle
+         * (uint16_t)(i<<1) is the i2c address left aligned
+         * retries 2
+         * timeout 2
+         */
+        result = HAL_I2C_IsDeviceReady(&hi2c1, (uint16_t) (i << 1), 2, 2);
+        if (result == HAL_OK) {
+            //char buf[10];
+            //sprintf(buf, "Add 0x%X", i); // Received an ACK at that address
+            //ssd1306_SetCursor(2, (nbDevice + 1) * 10);
+            //ssd1306_WriteString(buf, Font_7x10, White);
+            nbDevice++;
+        }
+    }
+    //ssd1306_UpdateScreen();
+    osDelay(4000);
+
+    if (nbDevice != NB_I2C_DEVICES) {
+        ledsState = LEDS_ERROR;
+
+//        ssd1306_Fill(Black);
+//        ssd1306_SetCursor(2, 0);
+//        ssd1306_WriteString("Erreur I2C", Font_7x10, White);
+//        ssd1306_UpdateScreen();
+
+        // Il manque des devices on bloque tout
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wmissing-noreturn"
+        while (true);
+#pragma clang diagnostic pop
+    }
+
+    if (!auDebloque()) {
+        ledsState = LEDS_ERROR;
+
+//        ssd1306_Fill(Black);
+//        ssd1306_SetCursor(2, 0);
+//        ssd1306_WriteString("AU KO", Font_7x10, White);
+//        ssd1306_UpdateScreen();
+
+        while(!auDebloque()) {
+            osDelay(500);
+        }
+    }
+    ledsState = LEDS_OK;
+
+//    uint8_t sd21Version = sd21_GetVersion();
+//    char buf[10];
+//    sprintf(buf, "SD21 v %i", sd21Version);
+//    ssd1306_Fill(Black);
+//    ssd1306_SetCursor(2, 0);
+//    ssd1306_WriteString(buf, Font_7x10, White);
+//    ssd1306_UpdateScreen();
+
+    // Position servo init
+    sd21_SetPositionAndSpeed(SERVO_ASC_NB, SPEED_ASC, ASC_BAS);
+
+    osDelay(4000);
+
+    ledsState = LEDS_BLANK;
+}
+
+// Détermination du mode de fonctionnement
+bool positionPhare() {
+    return HAL_GPIO_ReadPin(PositionPhare_GPIO_Port, PositionPhare_Pin) == GPIO_PIN_RESET;
+}
+
+// Est-ce que l'arret d'urgence est
+bool auDebloque() {
+    return HAL_GPIO_ReadPin(ArretUrgence_GPIO_Port, ArretUrgence_Pin) == GPIO_PIN_SET;
+}
+
+bool declenchementRobot() {
+    return HAL_GPIO_ReadPin(DeclenchementRobot_GPIO_Port, DeclenchementRobot_Pin) == GPIO_PIN_RESET;
+}
 
 /* USER CODE END 4 */
 
@@ -371,76 +528,15 @@ static void MX_GPIO_Init(void)
 void heartBeat(void const * argument)
 {
   /* USER CODE BEGIN 5 */
-  int elaspedTime = 0;
 
-  // Init screen
-  ssd1306_Init();
-
-  ssd1306_Fill(Black);
-  ssd1306_SetCursor(2, 0);
-  ssd1306_WriteString("Scan I2C bus :", Font_7x10, White);
-
-  HAL_StatusTypeDef result;
-  uint8_t i, nbDevice = 0;
-  for (i=1; i<128; i++) {
-    /*
-     * the HAL wants a left aligned i2c address
-     * &hi2c1 is the handle
-     * (uint16_t)(i<<1) is the i2c address left aligned
-     * retries 2
-     * timeout 2
-     */
-    result = HAL_I2C_IsDeviceReady(&hi2c1, (uint16_t)(i<<1), 2, 2);
-    if (result == HAL_OK) {
-      char buf[10];
-      sprintf(buf, "Add 0x%X", i); // Received an ACK at that address
-      ssd1306_SetCursor(2, (nbDevice + 1) * 10);
-      ssd1306_WriteString(buf, Font_7x10, White);
-      nbDevice++;
-    }
-  }
-  ssd1306_UpdateScreen();
-  osDelay(2000);
-
-  uint8_t sd21Version = sd21_GetVersion();
-
-  char buf[10];
-  sprintf(buf, "SD21 v %i", sd21Version);
-
-  ssd1306_Fill(Black);
-  ssd1306_SetCursor(2, 0);
-  ssd1306_WriteString(buf, Font_7x10, White);
-  ssd1306_UpdateScreen();
-
-  osDelay(2000);
-
-  vTaskResume(ledsUpdateTaskHandle);
-  //vTaskResume(servoTaskHandle);
-
-  /* Infinite loop */
+    /* Infinite loop */
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
-  while (1) {
-    HAL_GPIO_TogglePin(GreenLed_GPIO_Port, GreenLed_Pin);
+    while (1) {
+        HAL_GPIO_TogglePin(GreenLed_GPIO_Port, GreenLed_Pin);
 
-    SSD1306_COLOR backColor = elaspedTime % 2 ? Black : White;
-    SSD1306_COLOR fontColor = elaspedTime % 2 ? White : Black;
-    ssd1306_Fill(backColor);
-    ssd1306_SetCursor(2, 0);
-    ssd1306_WriteString("ARIG", Font_11x18, fontColor);
-    ssd1306_SetCursor(2, 18);
-    ssd1306_WriteString("Robotique", Font_7x10, fontColor);
-    ssd1306_SetCursor(2, 28);
-    ssd1306_WriteString("Elfa STM32 Version", Font_7x10, fontColor);
-    ssd1306_SetCursor(2, 38);
-    char buffer[50];
-    sprintf(buffer, "Time : %i s", elaspedTime);
-    ssd1306_WriteString(buffer, Font_7x10, fontColor);
-    ssd1306_UpdateScreen();
-
-    osDelay(1000);
-    elaspedTime++;
-  }
+        osDelay(1000);
+    }
 #pragma clang diagnostic pop
   /* USER CODE END 5 */ 
 }
@@ -455,54 +551,93 @@ void heartBeat(void const * argument)
 void ledsUpdate(void const * argument)
 {
   /* USER CODE BEGIN ledsUpdate */
-  int ledIndex = 1, ledIndexPrev, ledIndexSuiv;
-  int ledIndex2 = 7, ledIndex2Prev, ledIndex2Suiv;
+    int ledIndex = 1, ledIndexPrev, ledIndexSuiv;
+    //int ledIndex2 = 7, ledIndex2Prev, ledIndex2Suiv;
 
-  // Init LEDs
-  ws2812_Init();
-  ws2812_SetAllLedsColor(0, 0, 0);
+    // Init LEDs
+    ws2812_Init();
+    ws2812_SetAllLedsColor(0, 0, 0);
 
-  /* Infinite loop */
+    /* Infinite loop */
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
-  while (1) {
-    ledIndexSuiv = ledIndex + 1;
-    if (ledIndexSuiv >= LED_NUMBER) {
-      ledIndexSuiv = 0;
-    }
-    ledIndex2Suiv = ledIndex2 + 1;
-    if (ledIndex2Suiv >= LED_NUMBER) {
-      ledIndex2Suiv = 0;
-    }
-    ledIndexPrev = ledIndex - 1;
-    if (ledIndexPrev < 0) {
-      ledIndexPrev = LED_NUMBER - 1;
-    }
-    ledIndex2Prev = ledIndex2 -1;
-    if (ledIndex2Prev < 0) {
-      ledIndex2Prev = LED_NUMBER - 1;
-    }
+    while (1) {
+        switch (ledsState) {
+            case LEDS_BLANK: {
+                ws2812_SetAllLedsColor(0, 0, 0);
+                osDelay(500);
+                break;
+            }
 
-    ws2812_SetAllLedsColor(0, 0, 0);
-    //ws2812_SetLedColor(ledIndexPrev, 10, 0, 0);
-    ws2812_SetLedColor(ledIndex, 0, 10, 0);
-    //ws2812_SetLedColor(ledIndexSuiv, 10, 0, 0);
+            case LEDS_ERROR: {
+                ws2812_SetAllLedsColor(100, 0, 0);
+                osDelay(100);
+                ws2812_SetAllLedsColor(0, 0, 0);
+                osDelay(300);
+                break;
+            }
 
-    //ws2812_SetLedColor(ledIndex2Prev, 10, 0, 0);
-    ws2812_SetLedColor(ledIndex2, 10, 0, 0);
-    //ws2812_SetLedColor(ledIndex2Suiv, 10, 0, 0);
+            case LEDS_OK: {
+                ws2812_SetAllLedsColor(0, 100, 0);
+                osDelay(100);
+                ws2812_SetAllLedsColor(0, 0, 0);
+                osDelay(300);
+                break;
+            }
 
-    ledIndex++;
-    ledIndex2--;
-    if (ledIndex >= LED_NUMBER) {
-      ledIndex = 0;
+            case LEDS_MATCH: {
+                ledIndexSuiv = ledIndex + 1;
+                if (ledIndexSuiv >= LED_NUMBER) {
+                    ledIndexSuiv = 0;
+                }
+                /*
+                ledIndex2Suiv = ledIndex2 + 1;
+                if (ledIndex2Suiv >= LED_NUMBER) {
+                    ledIndex2Suiv = 0;
+                }
+                 */
+                ledIndexPrev = ledIndex - 1;
+                if (ledIndexPrev < 0) {
+                    ledIndexPrev = LED_NUMBER - 1;
+                }
+                /*
+                ledIndex2Prev = ledIndex2 - 1;
+                if (ledIndex2Prev < 0) {
+                    ledIndex2Prev = LED_NUMBER - 1;
+                }
+                */
+
+                ws2812_SetAllLedsColor(0, 0, 0);
+                ws2812_SetLedColor(ledIndexPrev, 50, 50, 50);
+                ws2812_SetLedColor(ledIndex, 100, 100, 100);
+                ws2812_SetLedColor(ledIndexSuiv, 50, 50, 50);
+
+                //ws2812_SetLedColor(ledIndex2Prev, 10, 0, 0);
+                //ws2812_SetLedColor(ledIndex2, 50, 0, 50);
+                //ws2812_SetLedColor(ledIndex2Suiv, 10, 0, 0);
+
+                ledIndex++;
+                //ledIndex2--;
+                if (ledIndex >= LED_NUMBER) {
+                    ledIndex = 0;
+
+                    for (int idx = 0; idx < 3 ; idx++) {
+                        ws2812_SetAllLedsColor(100, 100, 100);
+                        osDelay(100);
+                        ws2812_SetAllLedsColor(0, 0, 0);
+                        osDelay(300);
+                    }
+                }
+                /*
+                if (ledIndex2 < 0) {
+                    ledIndex2 = LED_NUMBER - 1;
+                }
+                */
+
+                osDelay(200);
+            }
+        }
     }
-    if (ledIndex2 < 0) {
-      ledIndex2 = LED_NUMBER - 1;
-    }
-
-    osDelay(200);
-  }
 #pragma clang diagnostic pop
   /* USER CODE END ledsUpdate */
 }
@@ -517,28 +652,55 @@ void ledsUpdate(void const * argument)
 void servo(void const * argument)
 {
   /* USER CODE BEGIN servo */
-  uint8_t toggle = 0;
+    int ascenseurPositionPrec = -1;
 
-  sd21_SetPositionAndSpeed(SERVO_ASC_NB, SPEED_ASC, ASC_BAS);
+    sd21_SetPositionAndSpeed(SERVO_ASC_NB, SPEED_ASC, ascenseurPosition);
 
-  /* Infinite loop */
+    /* Infinite loop */
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
-  while (1) {
-    if (toggle) {
-      toggle = 0;
+    while (1) {
+        if (ascenseurPosition != ascenseurPositionPrec) {
+            ascenseurPositionPrec = ascenseurPosition;
 
-      sd21_SetPosition(SERVO_ASC_NB, ASC_BAS);
-    } else {
-      toggle = 1;
+            sd21_SetPosition(SERVO_ASC_NB, ascenseurPosition);
+        }
 
-      sd21_SetPosition(SERVO_ASC_NB, ASC_HAUT);
+        osDelay(100);
     }
-
-    osDelay(5000);
-  }
 #pragma clang diagnostic pop
   /* USER CODE END servo */
+}
+
+/* USER CODE BEGIN Header_mainProcess */
+/**
+* @brief Function implementing the mainProcessTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_mainProcess */
+void mainProcess(void const * argument)
+{
+  /* USER CODE BEGIN mainProcess */
+
+    initialisation();
+
+    /* Infinite loop */
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wmissing-noreturn"
+    while (1) {
+        if (declenchementRobot()) {
+            ascenseurPosition = ASC_HAUT;
+            ledsState = LEDS_MATCH;
+        } else {
+            ascenseurPosition = ASC_BAS;
+            ledsState = LEDS_BLANK;
+        }
+
+        osDelay(1000);
+    }
+#pragma clang diagnostic pop
+  /* USER CODE END mainProcess */
 }
 
 /**
@@ -569,7 +731,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-  /* User can add his own implementation to report the HAL error return state */
+    /* User can add his own implementation to report the HAL error return state */
 
   /* USER CODE END Error_Handler_Debug */
 }

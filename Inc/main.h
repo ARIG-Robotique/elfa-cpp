@@ -38,18 +38,27 @@ extern "C" {
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
 
+typedef enum {
+    LEDS_ERROR = 0U,
+    LEDS_OK,
+    LEDS_MATCH,
+    LEDS_BLANK
+} LedsState;
+
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
 
+#define NB_I2C_DEVICES  1
+
 // ------------------------------- //
 // Configuration des servo moteurs //
 // ------------------------------- //
-#define SERVO_ASC_NB       1
+#define SERVO_ASC_NB       10
 
 // Valeur ascenseur electron
-#define SPEED_ASC          0
+#define SPEED_ASC          10
 #define ASC_HAUT           2460
 #define ASC_BAS     	   700
 
@@ -75,10 +84,16 @@ void Error_Handler(void);
 #define NeopixelSignal_GPIO_Port GPIOA
 #define GreenLed_Pin GPIO_PIN_5
 #define GreenLed_GPIO_Port GPIOA
+#define DeclenchementRobot_Pin GPIO_PIN_8
+#define DeclenchementRobot_GPIO_Port GPIOA
+#define PositionPhare_Pin GPIO_PIN_9
+#define PositionPhare_GPIO_Port GPIOA
 #define TMS_Pin GPIO_PIN_13
 #define TMS_GPIO_Port GPIOA
 #define TCK_Pin GPIO_PIN_14
 #define TCK_GPIO_Port GPIOA
+#define ArretUrgence_Pin GPIO_PIN_5
+#define ArretUrgence_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
