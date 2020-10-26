@@ -631,21 +631,24 @@ void ledsUpdate(void const * argument)
 
             case LEDS_MATCH: {
                 ledIndexSuiv = ledIndex + 1;
-                if (ledIndexSuiv >= LED_NUMBER) {
+                if (ledIndexSuiv >= LED_NUMBER/2) {
                     ledIndexSuiv = 0;
                 }
                 ledIndexPrev = ledIndex - 1;
                 if (ledIndexPrev < 0) {
-                    ledIndexPrev = LED_NUMBER - 1;
+                    ledIndexPrev = LED_NUMBER/2 - 1;
                 }
 
                 ws2812_SetAllLedsColor(0, 0, 0);
                 ws2812_SetLedColor(ledIndexPrev, 50, 50, 50);
                 ws2812_SetLedColor(ledIndex, 100, 100, 100);
                 ws2812_SetLedColor(ledIndexSuiv, 50, 50, 50);
+                ws2812_SetLedColor(ledIndexPrev + LED_NUMBER/2, 50, 50, 50);
+                ws2812_SetLedColor(ledIndex + LED_NUMBER/2, 100, 100, 100);
+                ws2812_SetLedColor(ledIndexSuiv + LED_NUMBER/2, 50, 50, 50);
 
                 ledIndex++;
-                if (ledIndex >= LED_NUMBER) {
+                if (ledIndex >= LED_NUMBER/2) {
                     ledIndex = 0;
                     nbCycleBeforeFlash++;
 
