@@ -1,59 +1,56 @@
-#=============================================================================#
-# Author: Gregory DEPUILLE                                                    #
-# Date:   13/05/2016                                                          #
-# Description: Arduino CMake Robot Elfa                                       #
-#=============================================================================#
+#THIS FILE IS AUTO GENERATED FROM THE TEMPLATE! DO NOT CHANGE!
+SET(CMAKE_SYSTEM_NAME Generic)
+SET(CMAKE_SYSTEM_VERSION 1)
+cmake_minimum_required(VERSION 3.7)
 
-# Contrôle de la version minimale de CMake
-cmake_minimum_required(VERSION 3.8.2)
+# specify cross compilers and tools
+SET(CMAKE_C_COMPILER_WORKS 1)
+SET(CMAKE_C_COMPILER arm-none-eabi-gcc)
+SET(CMAKE_CXX_COMPILER_WORKS 1)
+SET(CMAKE_CXX_COMPILER arm-none-eabi-g++)
+set(CMAKE_ASM_COMPILER  arm-none-eabi-gcc)
+set(CMAKE_AR arm-none-eabi-ar)
+set(CMAKE_OBJCOPY arm-none-eabi-objcopy)
+set(CMAKE_OBJDUMP arm-none-eabi-objdump)
+set(SIZE arm-none-eabi-size)
 
-# Définition de la tool chain de build
-set(CMAKE_TOOLCHAIN_FILE ./cmake/Arduino-Toolchain.cmake)
+SET(LINKER_SCRIPT ${CMAKE_SOURCE_DIR}/STM32F303RETx_FLASH.ld)
 
-# Fix bug in avrdude.conf included in ArduinoSDK
-set(ARDUINO_CMAKE_AVRDUDE_CONFIG_PATH /etc/avrdude/avrdude.conf)
+#Uncomment for hardware floating point
+SET(FPU_FLAGS "-mfloat-abi=hard -mfpu=fpv4-sp-d16")
+#add_definitions(-DARM_MATH_CM4 -DARM_MATH_MATRIX_CHECK -DARM_MATH_ROUNDING -D__FPU_PRESENT=1)
 
-# Compilateur flags
-#set(ARDUINO_C_FLAGS      "-ffunction-sections -fdata-sections")
-#set(ARDUINO_CXX_FLAGS    "${ARDUINO_C_FLAGS} -fno-exceptions")
-#set(ARDUINO_LINKER_FLAGS "-Wl,--gc-sections")
+#Uncomment for software floating point
+#SET(FPU_FLAGS "-mfloat-abi=soft")
 
-set(ARDUINO_CXX_FLAGS    "-std=c++11")
+SET(COMMON_FLAGS
+    "-mcpu=cortex-m4 ${FPU_FLAGS} -mthumb -mthumb-interwork -ffunction-sections -fdata-sections \
+    -g -fno-common -fmessage-length=0 -specs=nosys.specs -specs=nano.specs")
 
-if (NOT DEFINED CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "Release")
-endif()
+SET(CMAKE_CXX_FLAGS_INIT "${COMMON_FLAGS} -std=c++17")
+SET(CMAKE_C_FLAGS_INIT "${COMMON_FLAGS} -std=gnu99")
+SET(CMAKE_EXE_LINKER_FLAGS_INIT "-Wl,-gc-sections,--print-memory-usage -T ${LINKER_SCRIPT}")
 
-if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-    message(STATUS "Debug mode ON")
-    add_definitions(-DDEBUG_MODE)
-endif()
+PROJECT(elfa-cpp C CXX ASM)
+set(CMAKE_CXX_STANDARD 11)
 
-#====================================================================#
-#  Setup Project                                                     #
-#====================================================================#
+#add_definitions(-DARM_MATH_CM4 -DARM_MATH_MATRIX_CHECK -DARM_MATH_ROUNDING -D__FPU_PRESENT=1)
+add_definitions(-DUSE_HAL_DRIVER -DSTM32F303xE -DSSD1306_USE_I2C -DSTM32F3)
 
-project(ElfaRobot C CXX ASM)
-arduino_cmake_project(ElfaRobot BOARD_NAME megaADK BOARD_CPU atmega2560)
+file(GLOB_RECURSE SOURCES "Middlewares/*.*" "startup/*.*" "Drivers/*.*" "Src/*.*" "Libs/ssd1306/*.*" "Libs/ws2812/*.*" "Libs/sd21/*.*")
 
-# Build
-add_arduino_executable(ElfaRobot src/main.cpp src/define.h)
+include_directories(Inc Drivers/STM32F3xx_HAL_Driver/Inc Drivers/STM32F3xx_HAL_Driver/Inc/Legacy Drivers/CMSIS/Device/ST/STM32F3xx/Include Drivers/CMSIS/Include Middlewares/Third_Party/FreeRTOS/Source/include Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F "Libs/ssd1306/Inc" "Libs/ws2812/Inc" "Libs/sd21/Inc")
 
-# Wire Lib
-find_arduino_library(Wire Wire)
-link_arduino_library(ElfaRobot Wire)
+add_executable(${PROJECT_NAME}.elf ${SOURCES} ${LINKER_SCRIPT})
 
-# RobotSystemLib
-find_arduino_library(RobotSystem robot-system-lib)
-link_arduino_library(ElfaRobot RobotSystem)
+set(CMAKE_EXE_LINKER_FLAGS
+    "${CMAKE_EXE_LINKER_FLAGS} -Wl,-Map=${PROJECT_BINARY_DIR}/${PROJECT_NAME}.map")
 
-# Adafruit Libs
-find_arduino_library(AdafruitGFX Adafruit_GFX 3RD_PARTY)
-find_arduino_library(AdafruitSSD1306 Adafruit_SSD1306 3RD_PARTY)
+set(HEX_FILE ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.hex)
+set(BIN_FILE ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.bin)
 
-link_arduino_library(AdafruitSSD1306 AdafruitGFX)
-link_arduino_library(ElfaRobot AdafruitGFX)
-link_arduino_library(ElfaRobot AdafruitSSD1306)
-
-# Upload
-set_target_upload_port(ElfaRobot /dev/ttyACM0)
+add_custom_command(TARGET ${PROJECT_NAME}.elf POST_BUILD
+        COMMAND ${CMAKE_OBJCOPY} -Oihex $<TARGET_FILE:${PROJECT_NAME}.elf> ${HEX_FILE}
+        COMMAND ${CMAKE_OBJCOPY} -Obinary $<TARGET_FILE:${PROJECT_NAME}.elf> ${BIN_FILE}
+        COMMENT "Building ${HEX_FILE}
+Building ${BIN_FILE}")

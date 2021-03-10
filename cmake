@@ -1,1 +1,0 @@
-../arduino-cmake-ng/cmake/

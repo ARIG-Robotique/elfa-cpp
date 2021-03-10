@@ -1,60 +1,20 @@
 language: cpp
-os:
-- linux
-- osx
-env:
-  global:
-  - ARDUINO_SDK_BASE_PATH=arduino-sdk/arduino
-  matrix:
-  - ARDUINO_SDK_VERSION=1.6.10
-  - ARDUINO_SDK_VERSION=1.8.8
-cache:
-  directories:
-  - "$HOME/$ARDUINO_SDK_BASE_PATH-$ARDUINO_SDK_VERSION"
-before_install:
-- sdk_path="$HOME/$ARDUINO_SDK_BASE_PATH-$ARDUINO_SDK_VERSION"
-- mkdir -p "$sdk_path"
-- cd "$sdk_path/../.."
-- |
-  if [[ -z "$(ls -A "$sdk_path")" ]];
-  then
-    if [[ $TRAVIS_OS_NAME == linux ]]; then
-      sdk_file="arduino-$ARDUINO_SDK_VERSION-linux64.tar.xz"
-    else
-      sdk_file="arduino-$ARDUINO_SDK_VERSION-macosx.zip"
-    fi
-    wget "https://downloads.arduino.cc/$sdk_file" -O "$sdk_file"
-    if [[ $TRAVIS_OS_NAME == linux ]]; then
-      tar -xf "$sdk_file" -C arduino-sdk
-    else
-      unzip -q "$sdk_file"
-      mv Arduino.app/* arduino-sdk/arduino-$ARDUINO_SDK_VERSION
-    fi
-  fi
-- |
-  if [[ $TRAVIS_OS_NAME == osx ]]; then
-    sdk_path="$sdk_path/Contents/Java"
-  fi
-- export ARDUINO_SDK_PATH="$sdk_path"
-- cd "$TRAVIS_BUILD_DIR"
-- cd ..
-- git clone https://github.com/arduino-cmake/Arduino-CMake-NG.git arduino-cmake-ng
-- git clone https://github.com/ARIG-Robotique/robot-system-lib.git
-- git clone https://github.com/adafruit/Adafruit-GFX-Library.git Adafruit_GFX
-- git clone https://github.com/adafruit/Adafruit_SSD1306.git
+
+dist: bionic
+
 install:
-- cd "$TRAVIS_BUILD_DIR"
-- rm -f Adafruit_GFX Adafruit_SSD1306
-- ln -s ../Adafruit_GFX Adafruit_GFX
-- ln -s ../Adafruit_SSD1306 Adafruit_SSD1306
-- mkdir build
-- rm -rf build/*
-- cd build/
+  - sudo apt-get update
+  - sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib mc openocd build-essential
+
 script:
-- cmake ..
-- make
+  - mkdir build
+  - cd build/
+  - cmake ..
+  - make
+
 after_failure:
-- cat CMakeFiles/CMakeOutput.log
+  - cat CMakeFiles/CMakeOutput.log
+
 notifications:
   slack:
     secure: f3eY5dz47Z9Q9whNdMCIz5cW17H7wC74CYL//QPLRuyyxjva4bvDW1h9W8zCgHKGNrmb5I41K5Voy5Pjy42s3RKJpeVvmjD/rukq3rZ9Fy4ljSuwW3IuBP/6ew3rqWtRYoZFI3Q9idWDV8zMrL+pybQHxk0JR/gYZVcuRRXm840=
