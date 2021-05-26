@@ -50,16 +50,9 @@ typedef enum {
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
 
-#define NB_I2C_DEVICES  1
-
-// ------------------------------- //
-// Configuration des servo moteurs //
-// ------------------------------- //
-#define SERVO_ASC_NB       10
-
-// Valeur ascenseur electron
-#define SPEED_ASC          10
-#define ASC_HAUT           2460
+// Valeur ascenseur
+#define SPEED_ASC        10
+#define ASC_HAUT         2460
 #define ASC_BAS     	   700
 
 /* USER CODE END EC */

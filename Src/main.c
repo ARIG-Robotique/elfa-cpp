@@ -24,8 +24,6 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <WS2812.h>
-//#include <ssd1306.h>
-#include <SD21.h>
 #include <stdio.h>
 #include <stdbool.h>
 /* USER CODE END Includes */
@@ -46,8 +44,6 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-I2C_HandleTypeDef hi2c1;
-
 TIM_HandleTypeDef htim2;
 DMA_HandleTypeDef hdma_tim2_ch1;
 
@@ -69,7 +65,6 @@ TIM_OC_InitTypeDef htim2Config;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-static void MX_I2C1_Init(void);
 static void MX_DMA_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_USART2_UART_Init(void);
@@ -81,11 +76,8 @@ void mainProcess(void const * argument);
 /* USER CODE BEGIN PFP */
 
 void initialisation();
-
-bool positionPhare();
-
+bool positionPhare(); // TODO Couleur LEDs ??
 bool auDebloque();
-
 bool declenchementRobot();
 
 /* USER CODE END PFP */
@@ -123,7 +115,6 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_I2C1_Init();
   MX_DMA_Init();
   MX_TIM2_Init();
   MX_USART2_UART_Init();
@@ -175,11 +166,14 @@ int main(void)
   /* We should never get here as control is now taken by the scheduler */
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "EndlessLoop"
     while (1) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
     }
+#pragma clang diagnostic pop
   /* USER CODE END 3 */
 }
 
@@ -220,61 +214,13 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART2|RCC_PERIPHCLK_I2C1
-                              |RCC_PERIPHCLK_TIM2;
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART2|RCC_PERIPHCLK_TIM2;
   PeriphClkInit.Usart2ClockSelection = RCC_USART2CLKSOURCE_PCLK1;
-  PeriphClkInit.I2c1ClockSelection = RCC_I2C1CLKSOURCE_HSI;
   PeriphClkInit.Tim2ClockSelection = RCC_TIM2CLK_HCLK;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
     Error_Handler();
   }
-}
-
-/**
-  * @brief I2C1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_I2C1_Init(void)
-{
-
-  /* USER CODE BEGIN I2C1_Init 0 */
-
-  /* USER CODE END I2C1_Init 0 */
-
-  /* USER CODE BEGIN I2C1_Init 1 */
-
-  /* USER CODE END I2C1_Init 1 */
-  hi2c1.Instance = I2C1;
-  hi2c1.Init.Timing = 0x2000090E;
-  hi2c1.Init.OwnAddress1 = 0;
-  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
-  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
-  hi2c1.Init.OwnAddress2 = 0;
-  hi2c1.Init.OwnAddress2Masks = I2C_OA2_NOMASK;
-  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
-  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /** Configure Analogue filter
-  */
-  if (HAL_I2CEx_ConfigAnalogFilter(&hi2c1, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /** Configure Digital filter
-  */
-  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 0) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN I2C1_Init 2 */
-
-  /* USER CODE END I2C1_Init 2 */
-
 }
 
 /**
@@ -467,82 +413,32 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(ArretUrgence_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pins : PB8 PB9 */
+  GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_9;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  GPIO_InitStruct.Alternate = GPIO_AF4_I2C1;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
 }
 
 /* USER CODE BEGIN 4 */
 
 void initialisation() {
-    // Init screen
-    //ssd1306_Init();
-
-    //ssd1306_Fill(Black);
-    //ssd1306_SetCursor(2, 0);
-    //ssd1306_WriteString("Scan I2C bus :", Font_7x10, White);
-
-    HAL_StatusTypeDef result;
-    uint8_t i, nbDevice = 0;
-    for (i = 1; i < 128; i++) {
-        /*
-         * the HAL wants a left aligned i2c address
-         * &hi2c1 is the handle
-         * (uint16_t)(i<<1) is the i2c address left aligned
-         * retries 2
-         * timeout 2
-         */
-        result = HAL_I2C_IsDeviceReady(&hi2c1, (uint16_t) (i << 1), 2, 2);
-        if (result == HAL_OK) {
-            //char buf[10];
-            //sprintf(buf, "Add 0x%X", i); // Received an ACK at that address
-            //ssd1306_SetCursor(2, (nbDevice + 1) * 10);
-            //ssd1306_WriteString(buf, Font_7x10, White);
-            nbDevice++;
-        }
-    }
-    //ssd1306_UpdateScreen();
-    osDelay(4000);
-
-    if (nbDevice != NB_I2C_DEVICES) {
-        ledsState = LEDS_ERROR;
-
-//        ssd1306_Fill(Black);
-//        ssd1306_SetCursor(2, 0);
-//        ssd1306_WriteString("Erreur I2C", Font_7x10, White);
-//        ssd1306_UpdateScreen();
-
-        // Il manque des devices on bloque tout
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wmissing-noreturn"
-        while (true);
-#pragma clang diagnostic pop
-    }
-
     if (!auDebloque()) {
         ledsState = LEDS_ERROR;
-
-//        ssd1306_Fill(Black);
-//        ssd1306_SetCursor(2, 0);
-//        ssd1306_WriteString("AU KO", Font_7x10, White);
-//        ssd1306_UpdateScreen();
-
         while(!auDebloque()) {
             osDelay(500);
         }
     }
     ledsState = LEDS_OK;
 
-//    uint8_t sd21Version = sd21_GetVersion();
-//    char buf[10];
-//    sprintf(buf, "SD21 v %i", sd21Version);
-//    ssd1306_Fill(Black);
-//    ssd1306_SetCursor(2, 0);
-//    ssd1306_WriteString(buf, Font_7x10, White);
-//    ssd1306_UpdateScreen();
-
     // Position servo init
-    sd21_SetPositionAndSpeed(SERVO_ASC_NB, SPEED_ASC, ASC_BAS);
+    //TODO Position servo TIMER
+    //sd21_SetPositionAndSpeed(SERVO_ASC_NB, SPEED_ASC, ASC_BAS);
 
     osDelay(4000);
-
     ledsState = LEDS_BLANK;
 }
 
@@ -575,7 +471,7 @@ void heartBeat(void const * argument)
 
     /* Infinite loop */
 #pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wmissing-noreturn"
+#pragma ide diagnostic ignored "EndlessLoop"
     while (1) {
         HAL_GPIO_TogglePin(GreenLed_GPIO_Port, GreenLed_Pin);
 
@@ -604,7 +500,7 @@ void ledsUpdate(void const * argument)
 
     /* Infinite loop */
 #pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wmissing-noreturn"
+#pragma ide diagnostic ignored "EndlessLoop"
     while (1) {
         switch (ledsState) {
             case LEDS_BLANK: {
@@ -683,16 +579,18 @@ void servo(void const * argument)
   /* USER CODE BEGIN servo */
     int ascenseurPositionPrec = -1;
 
-    sd21_SetPositionAndSpeed(SERVO_ASC_NB, SPEED_ASC, ascenseurPosition);
+    // TODO Position servo
+    //sd21_SetPositionAndSpeed(SERVO_ASC_NB, SPEED_ASC, ascenseurPosition);
 
     /* Infinite loop */
 #pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wmissing-noreturn"
+#pragma ide diagnostic ignored "EndlessLoop"
     while (1) {
         if (ascenseurPosition != ascenseurPositionPrec) {
             ascenseurPositionPrec = ascenseurPosition;
 
-            sd21_SetPosition(SERVO_ASC_NB, ascenseurPosition);
+            // TODO Position servo
+            //sd21_SetPosition(SERVO_ASC_NB, ascenseurPosition);
         }
 
         osDelay(100);
@@ -716,7 +614,7 @@ void mainProcess(void const * argument)
 
     /* Infinite loop */
 #pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wmissing-noreturn"
+#pragma ide diagnostic ignored "EndlessLoop"
     while (1) {
         if (declenchementRobot()) {
             ascenseurPosition = ASC_HAUT;
