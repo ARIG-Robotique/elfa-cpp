@@ -22,10 +22,13 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "main.h"
+#include "cmsis_os.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdbool.h>
+#include "WS2812.h"
+#include "tim.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -40,38 +43,283 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-
+void initialisation();
+bool positionPhare(); // TODO Couleur LEDs ??
+bool auDebloque();
+bool declenchementRobot();
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
 
+LedsState ledsState = LEDS_BLANK;
+int ascenseurPosition = ASC_BAS;
+int ascenseurPositionTarget = ASC_BAS;
+
 /* USER CODE END Variables */
+/* Definitions for mainTask */
+osThreadId_t mainTaskHandle;
+const osThreadAttr_t mainTask_attributes = {
+  .name = "mainTask",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for ledsTask */
+osThreadId_t ledsTaskHandle;
+const osThreadAttr_t ledsTask_attributes = {
+  .name = "ledsTask",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityRealtime,
+};
+/* Definitions for heartBeatTimer */
+osTimerId_t heartBeatTimerHandle;
+const osTimerAttr_t heartBeatTimer_attributes = {
+  .name = "heartBeatTimer"
+};
+/* Definitions for servoTimer */
+osTimerId_t servoTimerHandle;
+const osTimerAttr_t servoTimer_attributes = {
+  .name = "servoTimer"
+};
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
-   
+
 /* USER CODE END FunctionPrototypes */
 
-/* GetIdleTaskMemory prototype (linked to static allocation support) */
-void vApplicationGetIdleTaskMemory( StaticTask_t **ppxIdleTaskTCBBuffer, StackType_t **ppxIdleTaskStackBuffer, uint32_t *pulIdleTaskStackSize );
+void StartMainTask(void *argument);
+void StartLedsTask(void *argument);
+void heartBeatCallback(void *argument);
+void servoCallback(void *argument);
 
-/* USER CODE BEGIN GET_IDLE_TASK_MEMORY */
-static StaticTask_t xIdleTaskTCBBuffer;
-static StackType_t xIdleStack[configMINIMAL_STACK_SIZE];
-  
-void vApplicationGetIdleTaskMemory( StaticTask_t **ppxIdleTaskTCBBuffer, StackType_t **ppxIdleTaskStackBuffer, uint32_t *pulIdleTaskStackSize )
+void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
+
+/**
+  * @brief  FreeRTOS initialization
+  * @param  None
+  * @retval None
+  */
+void MX_FREERTOS_Init(void) {
+  /* USER CODE BEGIN Init */
+
+  /* USER CODE END Init */
+
+  /* USER CODE BEGIN RTOS_MUTEX */
+  /* add mutexes, ... */
+  /* USER CODE END RTOS_MUTEX */
+
+  /* USER CODE BEGIN RTOS_SEMAPHORES */
+  /* add semaphores, ... */
+  /* USER CODE END RTOS_SEMAPHORES */
+
+  /* Create the timer(s) */
+  /* creation of heartBeatTimer */
+  heartBeatTimerHandle = osTimerNew(heartBeatCallback, osTimerPeriodic, NULL, &heartBeatTimer_attributes);
+
+  /* creation of servoTimer */
+  servoTimerHandle = osTimerNew(servoCallback, osTimerPeriodic, NULL, &servoTimer_attributes);
+
+  /* USER CODE BEGIN RTOS_TIMERS */
+  /* start timers, add new ones, ... */
+  /* USER CODE END RTOS_TIMERS */
+
+  /* USER CODE BEGIN RTOS_QUEUES */
+  /* add queues, ... */
+  /* USER CODE END RTOS_QUEUES */
+
+  /* Create the thread(s) */
+  /* creation of mainTask */
+  mainTaskHandle = osThreadNew(StartMainTask, NULL, &mainTask_attributes);
+
+  /* creation of ledsTask */
+  ledsTaskHandle = osThreadNew(StartLedsTask, NULL, &ledsTask_attributes);
+
+  /* USER CODE BEGIN RTOS_THREADS */
+  /* add threads, ... */
+  /* USER CODE END RTOS_THREADS */
+
+  /* USER CODE BEGIN RTOS_EVENTS */
+  /* add events, ... */
+  /* USER CODE END RTOS_EVENTS */
+
+}
+
+/* USER CODE BEGIN Header_StartMainTask */
+/**
+  * @brief  Function implementing the mainTask thread.
+  * @param  argument: Not used
+  * @retval None
+  */
+/* USER CODE END Header_StartMainTask */
+void StartMainTask(void *argument)
 {
-  *ppxIdleTaskTCBBuffer = &xIdleTaskTCBBuffer;
-  *ppxIdleTaskStackBuffer = &xIdleStack[0];
-  *pulIdleTaskStackSize = configMINIMAL_STACK_SIZE;
-  /* place for user code */
-}                   
-/* USER CODE END GET_IDLE_TASK_MEMORY */
+  /* USER CODE BEGIN StartMainTask */
+  osTimerStart(heartBeatTimerHandle, 1000);
+  osTimerStart(servoTimerHandle, SPEED_ASC);
+
+  initialisation();
+
+  /* Infinite loop */
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "EndlessLoop"
+  while(true)
+  {
+    if (declenchementRobot()) {
+      ascenseurPositionTarget = ASC_HAUT;
+      ledsState = LEDS_MATCH;
+    } else {
+      ascenseurPositionTarget = ASC_BAS;
+      ledsState = LEDS_BLANK;
+    }
+
+    osDelay(1000);
+  }
+#pragma clang diagnostic pop
+  /* USER CODE END StartMainTask */
+}
+
+/* USER CODE BEGIN Header_StartLedsTask */
+/**
+* @brief Function implementing the ledsTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartLedsTask */
+void StartLedsTask(void *argument)
+{
+  /* USER CODE BEGIN StartLedsTask */
+  int ledIndex = 1, ledIndexPrev, ledIndexSuiv;
+  int nbCycleBeforeFlash = 0;
+
+  // Init LEDs
+  ws2812_Init();
+  ws2812_SetAllLedsColor(0, 0, 0);
+
+  /* Infinite loop */
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "EndlessLoop"
+  while(true)
+  {
+    switch (ledsState) {
+      case LEDS_BLANK: {
+        ws2812_SetAllLedsColor(0, 0, 0);
+        osDelay(500);
+        break;
+      }
+
+      case LEDS_ERROR: {
+        ws2812_SetAllLedsColor(100, 0, 0);
+        osDelay(100);
+        ws2812_SetAllLedsColor(0, 0, 0);
+        osDelay(300);
+        break;
+      }
+
+      case LEDS_OK: {
+        ws2812_SetAllLedsColor(0, 100, 0);
+        osDelay(100);
+        ws2812_SetAllLedsColor(0, 0, 0);
+        osDelay(300);
+        break;
+      }
+
+      case LEDS_MATCH: {
+        ledIndexSuiv = ledIndex + 1;
+        if (ledIndexSuiv >= LED_NUMBER/2) {
+          ledIndexSuiv = 0;
+        }
+        ledIndexPrev = ledIndex - 1;
+        if (ledIndexPrev < 0) {
+          ledIndexPrev = LED_NUMBER/2 - 1;
+        }
+
+        ws2812_SetAllLedsColor(0, 0, 0);
+        ws2812_SetLedColor(ledIndexPrev, 50, 50, 50);
+        ws2812_SetLedColor(ledIndex, 100, 100, 100);
+        ws2812_SetLedColor(ledIndexSuiv, 50, 50, 50);
+        ws2812_SetLedColor(ledIndexPrev + LED_NUMBER/2, 50, 50, 50);
+        ws2812_SetLedColor(ledIndex + LED_NUMBER/2, 100, 100, 100);
+        ws2812_SetLedColor(ledIndexSuiv + LED_NUMBER/2, 50, 50, 50);
+
+        ledIndex++;
+        if (ledIndex >= LED_NUMBER/2) {
+          ledIndex = 0;
+          nbCycleBeforeFlash++;
+
+          if (nbCycleBeforeFlash > 3) {
+            nbCycleBeforeFlash = 0;
+            for (int idx = 0; idx < 3; idx++) {
+              ws2812_SetAllLedsColor(100, 100, 100);
+              osDelay(100);
+              ws2812_SetAllLedsColor(0, 0, 0);
+              osDelay(300);
+            }
+          }
+        }
+
+        osDelay(100);
+      }
+    }
+  }
+#pragma clang diagnostic pop
+  /* USER CODE END StartLedsTask */
+}
+
+/* heartBeatCallback function */
+void heartBeatCallback(void *argument)
+{
+  /* USER CODE BEGIN heartBeatCallback */
+  HAL_GPIO_TogglePin(GreenLed_GPIO_Port, GreenLed_Pin);
+  /* USER CODE END heartBeatCallback */
+}
+
+/* servoCallback function */
+void servoCallback(void *argument)
+{
+  /* USER CODE BEGIN servoCallback */
+  if (ascenseurPosition < ascenseurPositionTarget) {
+    ascenseurPosition += 10;
+    ascenseurPosition = configMAX(ascenseurPositionTarget, ascenseurPosition);
+  } else if (ascenseurPosition > ascenseurPositionTarget) {
+    ascenseurPosition -= 10;
+    ascenseurPosition = configMIN(ascenseurPositionTarget, ascenseurPosition);
+  }
+
+  if (ascenseurPosition != ascenseurPositionTarget) {
+
+  }
+
+  /* USER CODE END servoCallback */
+}
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
-     
+void initialisation() {
+  if (!auDebloque()) {
+    ledsState = LEDS_ERROR;
+    while(!auDebloque()) {
+      osDelay(500);
+    }
+  }
+  ledsState = LEDS_OK;
+
+  osDelay(2000);
+  ledsState = LEDS_BLANK;
+}
+
+// Détermination du mode de fonctionnement
+bool positionPhare() {
+  return HAL_GPIO_ReadPin(PositionPhare_GPIO_Port, PositionPhare_Pin) == GPIO_PIN_RESET;
+}
+
+// Est-ce que l'arret d'urgence est
+bool auDebloque() {
+  return HAL_GPIO_ReadPin(ArretUrgence_GPIO_Port, ArretUrgence_Pin) == GPIO_PIN_SET;
+}
+
+bool declenchementRobot() {
+  return HAL_GPIO_ReadPin(DeclenchementRobot_GPIO_Port, DeclenchementRobot_Pin) == GPIO_PIN_RESET;
+}
 /* USER CODE END Application */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
