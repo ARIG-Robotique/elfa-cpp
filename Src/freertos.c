@@ -54,6 +54,7 @@ bool declenchementRobot();
 
 LedsState ledsState = LEDS_BLANK;
 int ascenseurPosition = ASC_BAS;
+int ascenseurPositionPrec = -1;
 int ascenseurPositionTarget = ASC_BAS;
 
 /* USER CODE END Variables */
@@ -285,8 +286,9 @@ void servoCallback(void *argument)
     ascenseurPosition = configMIN(ascenseurPositionTarget, ascenseurPosition);
   }
 
-  if (ascenseurPosition != ascenseurPositionTarget) {
-
+  if (ascenseurPosition != ascenseurPositionPrec) {
+    ascenseurPositionPrec = ascenseurPosition;
+    __HAL_TIM_SetCompare(&htim3, TIM_CHANNEL_1, ascenseurPosition);
   }
 
   /* USER CODE END servoCallback */
