@@ -44,7 +44,7 @@
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
 void initialisation();
-bool positionPhare(); // TODO Couleur LEDs ??
+Equipe couleurEquipe();
 bool auDebloque();
 bool declenchementRobot();
 /* USER CODE END PM */
@@ -56,6 +56,18 @@ LedsState ledsState = LEDS_BLANK;
 int ascenseurPosition = ASC_BAS;
 int ascenseurPositionPrec = -1;
 int ascenseurPositionTarget = ASC_BAS;
+
+Equipe equipe = JAUNE;
+const CouleurRGB jauneColor = {
+  .r = 0,
+  .g = 100,
+  .b = 100,
+};
+const CouleurRGB bleuColor = {
+  .r = 0,
+  .g = 0,
+  .b = 100,
+};
 
 /* USER CODE END Variables */
 /* Definitions for mainTask */
@@ -155,16 +167,28 @@ void MX_FREERTOS_Init(void) {
 void StartMainTask(void *argument)
 {
   /* USER CODE BEGIN StartMainTask */
+  Equipe equipePrec;
+
   osTimerStart(heartBeatTimerHandle, 1000);
   osTimerStart(servoTimerHandle, SPEED_ASC);
 
   initialisation();
+  equipePrec = equipe;
 
   /* Infinite loop */
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "EndlessLoop"
   while(true)
   {
+    equipe = couleurEquipe();
+    if (equipe != equipePrec) {
+      equipePrec = equipe;
+      LedsState prec = ledsState;
+      ledsState = LEDS_MATCH;
+      osDelay(5000);
+      ledsState = prec;
+    }
+
     if (declenchementRobot()) {
       ascenseurPositionTarget = ASC_HAUT;
       ledsState = LEDS_MATCH;
@@ -191,6 +215,7 @@ void StartLedsTask(void *argument)
   /* USER CODE BEGIN StartLedsTask */
   int ledIndex = 1, ledIndexPrev, ledIndexSuiv;
   int nbCycleBeforeFlash = 0;
+  CouleurRGB applyColor;
 
   // Init LEDs
   ws2812_Init();
@@ -234,13 +259,19 @@ void StartLedsTask(void *argument)
           ledIndexPrev = LED_NUMBER/2 - 1;
         }
 
+        if (equipe == JAUNE) {
+          applyColor = jauneColor;
+        } else {
+          applyColor = bleuColor;
+        }
+
         ws2812_SetAllLedsColor(0, 0, 0);
-        ws2812_SetLedColor(ledIndexPrev, 50, 50, 50);
-        ws2812_SetLedColor(ledIndex, 100, 100, 100);
-        ws2812_SetLedColor(ledIndexSuiv, 50, 50, 50);
-        ws2812_SetLedColor(ledIndexPrev + LED_NUMBER/2, 50, 50, 50);
-        ws2812_SetLedColor(ledIndex + LED_NUMBER/2, 100, 100, 100);
-        ws2812_SetLedColor(ledIndexSuiv + LED_NUMBER/2, 50, 50, 50);
+        ws2812_SetLedColor(ledIndexPrev, applyColor.r / 2, applyColor.g / 2, applyColor.b / 2);
+        ws2812_SetLedColor(ledIndex, applyColor.r, applyColor.g, applyColor.b);
+        ws2812_SetLedColor(ledIndexSuiv, applyColor.r / 2, applyColor.g / 2, applyColor.b / 2);
+        ws2812_SetLedColor(ledIndexPrev + LED_NUMBER/2, applyColor.r / 2, applyColor.g / 2, applyColor.b / 2);
+        ws2812_SetLedColor(ledIndex + LED_NUMBER/2, applyColor.r, applyColor.g, applyColor.b);
+        ws2812_SetLedColor(ledIndexSuiv + LED_NUMBER/2, applyColor.r / 2, applyColor.g / 2, applyColor.b / 2);
 
         ledIndex++;
         if (ledIndex >= LED_NUMBER/2) {
@@ -297,21 +328,34 @@ void servoCallback(void *argument)
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
 void initialisation() {
+  // Check de l'AU au boot
   if (!auDebloque()) {
+
+    // AU KO, erreur
     ledsState = LEDS_ERROR;
     while(!auDebloque()) {
       osDelay(500);
     }
   }
   ledsState = LEDS_OK;
-
   osDelay(2000);
+
+  // Affichage en fonction de la couleur selectionné
+  equipe = couleurEquipe();
+  ledsState = LEDS_MATCH;
+  osDelay(5000);
+
+  // Fin cycle d'init
   ledsState = LEDS_BLANK;
 }
 
 // Détermination du mode de fonctionnement
-bool positionPhare() {
-  return HAL_GPIO_ReadPin(PositionPhare_GPIO_Port, PositionPhare_Pin) == GPIO_PIN_RESET;
+Equipe couleurEquipe() {
+  if(HAL_GPIO_ReadPin(SelectionEquipe_GPIO_Port, SelectionEquipe_Pin) == GPIO_PIN_RESET) {
+    return BLEU;
+  } else {
+    return JAUNE;
+  }
 }
 
 // Est-ce que l'arret d'urgence est

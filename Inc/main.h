@@ -45,16 +45,29 @@ typedef enum {
     LEDS_BLANK
 } LedsState;
 
+typedef enum {
+    JAUNE,
+    BLEU
+} Equipe;
+
+typedef struct {
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+} CouleurRGB;
+
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
 
 // Valeur ascenseur
-#define SPEED_ASC        10
-#define ASC_INIT         1500
-#define ASC_HAUT         2460
-#define ASC_BAS     	   700
+#define SPEED_ASC       10
+#define ASC_INIT        1500
+#define ASC_HAUT        2460
+#define ASC_BAS         700
+
+// Valeur Couleur
 
 /* USER CODE END EC */
 
@@ -80,8 +93,8 @@ void Error_Handler(void);
 #define AscenseurPWM_GPIO_Port GPIOA
 #define DeclenchementRobot_Pin GPIO_PIN_8
 #define DeclenchementRobot_GPIO_Port GPIOA
-#define PositionPhare_Pin GPIO_PIN_9
-#define PositionPhare_GPIO_Port GPIOA
+#define SelectionEquipe_Pin GPIO_PIN_9
+#define SelectionEquipe_GPIO_Port GPIOA
 #define TMS_Pin GPIO_PIN_13
 #define TMS_GPIO_Port GPIOA
 #define TCK_Pin GPIO_PIN_14
