@@ -22,6 +22,8 @@
 
 /* USER CODE BEGIN 0 */
 #include "WS2812.h"
+
+TIM_OC_InitTypeDef htim2Config;
 /* USER CODE END 0 */
 
 TIM_HandleTypeDef htim2;
@@ -67,7 +69,7 @@ void MX_TIM2_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN TIM2_Init 2 */
-
+  htim2Config = sConfigOC;
   /* USER CODE END TIM2_Init 2 */
   HAL_TIM_MspPostInit(&htim2);
 

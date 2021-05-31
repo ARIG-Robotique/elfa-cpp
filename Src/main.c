@@ -50,8 +50,6 @@
 
 /* USER CODE BEGIN PV */
 
-TIM_OC_InitTypeDef htim2Config;
-
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
