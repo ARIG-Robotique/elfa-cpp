@@ -81,7 +81,7 @@ const osThreadAttr_t mainTask_attributes = {
 osThreadId_t ledsTaskHandle;
 const osThreadAttr_t ledsTask_attributes = {
   .name = "ledsTask",
-  .stack_size = 128 * 4,
+  .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityRealtime,
 };
 /* Definitions for heartBeatTimer */
