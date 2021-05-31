@@ -170,9 +170,9 @@ void StartMainTask(void *argument)
   Equipe equipePrec;
 
   osTimerStart(heartBeatTimerHandle, 1000);
-  osTimerStart(servoTimerHandle, SPEED_ASC);
 
   initialisation();
+  osTimerStart(servoTimerHandle, SPEED_ASC);
   equipePrec = equipe;
 
   /* Infinite loop */
@@ -311,10 +311,14 @@ void servoCallback(void *argument)
   /* USER CODE BEGIN servoCallback */
   if (ascenseurPosition < ascenseurPositionTarget) {
     ascenseurPosition += 10;
-    ascenseurPosition = configMAX(ascenseurPositionTarget, ascenseurPosition);
+    if (ascenseurPosition > ascenseurPositionTarget) {
+      ascenseurPosition = ascenseurPositionTarget;
+    }
   } else if (ascenseurPosition > ascenseurPositionTarget) {
     ascenseurPosition -= 10;
-    ascenseurPosition = configMIN(ascenseurPositionTarget, ascenseurPosition);
+    if (ascenseurPosition < ascenseurPositionTarget) {
+      ascenseurPosition = ascenseurPositionTarget;
+    }
   }
 
   if (ascenseurPosition != ascenseurPositionPrec) {
