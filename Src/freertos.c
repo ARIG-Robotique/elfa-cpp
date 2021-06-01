@@ -59,9 +59,9 @@ int ascenseurPositionTarget = ASC_BAS;
 
 Equipe equipe = JAUNE;
 const CouleurRGB jauneColor = {
-  .r = 0,
+  .r = 100,
   .g = 100,
-  .b = 100,
+  .b = 0,
 };
 const CouleurRGB bleuColor = {
   .r = 0,
