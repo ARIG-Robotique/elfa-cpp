@@ -12,10 +12,8 @@ void ws2812_fillBufferWhite(void);
 
 void ws2812_Init() {
   ws2812_fillBufferBlack();
-  ws2812_Update();
-}
 
-void ws2812_Update() {
+  // Start PWM Generator from DMA
   HAL_TIM_PWM_ConfigChannel(&htim2, &htim2Config, TIM_CHANNEL_1);
   HAL_TIM_PWM_Start_DMA(&htim2, TIM_CHANNEL_1, (uint32_t *) LedBuffer, LED_BUFFER_SIZE);
 }

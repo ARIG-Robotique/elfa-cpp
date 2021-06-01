@@ -29,7 +29,6 @@
 static uint8_t LedBuffer[LED_BUFFER_SIZE];
 
 void ws2812_Init(void);
-void ws2812_Update(void);
 
 void ws2812_SetLedColor(uint32_t ledNumber, uint8_t red, uint8_t green, uint8_t blue);
 void ws2812_SetAllLedsColor(uint8_t red, uint8_t green, uint8_t blue);

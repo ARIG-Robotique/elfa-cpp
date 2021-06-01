@@ -219,7 +219,6 @@ void StartLedsTask(void *argument)
 
   // Init LEDs
   ws2812_Init();
-  ws2812_SetAllLedsColor(0, 0, 0);
 
   /* Infinite loop */
 #pragma clang diagnostic push
