@@ -280,7 +280,7 @@ void StartLedsTask(void *argument)
           if (nbCycleBeforeFlash > 3) {
             nbCycleBeforeFlash = 0;
             for (int idx = 0; idx < 3; idx++) {
-              ws2812_SetAllLedsColor(100, 100, 100);
+              ws2812_SetAllLedsColor(applyColor.r, applyColor.g, applyColor.b);
               osDelay(100);
               ws2812_SetAllLedsColor(0, 0, 0);
               osDelay(300);
