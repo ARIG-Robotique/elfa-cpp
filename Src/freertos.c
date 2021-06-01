@@ -59,14 +59,14 @@ int ascenseurPositionTarget = ASC_BAS;
 
 Equipe equipe = JAUNE;
 const CouleurRGB jauneColor = {
-  .r = 100,
-  .g = 100,
+  .r = 255,
+  .g = 215,
   .b = 0,
 };
 const CouleurRGB bleuColor = {
   .r = 0,
   .g = 0,
-  .b = 100,
+  .b = 255,
 };
 
 /* USER CODE END Variables */
@@ -233,7 +233,7 @@ void StartLedsTask(void *argument)
       }
 
       case LEDS_ERROR: {
-        ws2812_SetAllLedsColor(100, 0, 0);
+        ws2812_SetAllLedsColor(255, 0, 0);
         osDelay(100);
         ws2812_SetAllLedsColor(0, 0, 0);
         osDelay(300);
@@ -241,7 +241,7 @@ void StartLedsTask(void *argument)
       }
 
       case LEDS_OK: {
-        ws2812_SetAllLedsColor(0, 100, 0);
+        ws2812_SetAllLedsColor(0, 255, 0);
         osDelay(100);
         ws2812_SetAllLedsColor(0, 0, 0);
         osDelay(300);
