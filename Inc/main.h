@@ -45,30 +45,35 @@ typedef enum {
     LEDS_BLANK
 } LedsState;
 
+typedef enum {
+    JAUNE,
+    BLEU
+} Equipe;
+
+typedef struct {
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+} CouleurRGB;
+
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
 
-#define NB_I2C_DEVICES  1
+// Valeur ascenseur
+#define SPEED_ASC       10
+#define ASC_INIT        1500
+#define ASC_HAUT        2460
+#define ASC_BAS         700
 
-// ------------------------------- //
-// Configuration des servo moteurs //
-// ------------------------------- //
-#define SERVO_ASC_NB       10
-
-// Valeur ascenseur electron
-#define SPEED_ASC          10
-#define ASC_HAUT           2460
-#define ASC_BAS     	   700
+// Valeur Couleur
 
 /* USER CODE END EC */
 
 /* Exported macro ------------------------------------------------------------*/
 /* USER CODE BEGIN EM */
 /* USER CODE END EM */
-
-void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);
@@ -84,10 +89,12 @@ void Error_Handler(void);
 #define NeopixelSignal_GPIO_Port GPIOA
 #define GreenLed_Pin GPIO_PIN_5
 #define GreenLed_GPIO_Port GPIOA
+#define AscenseurPWM_Pin GPIO_PIN_6
+#define AscenseurPWM_GPIO_Port GPIOA
 #define DeclenchementRobot_Pin GPIO_PIN_8
 #define DeclenchementRobot_GPIO_Port GPIOA
-#define PositionPhare_Pin GPIO_PIN_9
-#define PositionPhare_GPIO_Port GPIOA
+#define SelectionEquipe_Pin GPIO_PIN_9
+#define SelectionEquipe_GPIO_Port GPIOA
 #define TMS_Pin GPIO_PIN_13
 #define TMS_GPIO_Port GPIOA
 #define TCK_Pin GPIO_PIN_14
