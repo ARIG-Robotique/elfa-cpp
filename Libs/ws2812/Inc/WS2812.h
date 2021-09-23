@@ -32,7 +32,6 @@ void ws2812_Init(void);
 
 void ws2812_SetLedColor(uint32_t ledNumber, uint8_t red, uint8_t green, uint8_t blue);
 void ws2812_SetAllLedsColor(uint8_t red, uint8_t green, uint8_t blue);
-
-//void ws2812_effectCircularRing(uint32_t interval, uint8_t red, uint8_t green, uint8_t blue);
+void ws2812_FadeToBlack(uint8_t scaleBy);
 
 #endif // _WS2812_H

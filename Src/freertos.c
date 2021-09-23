@@ -213,7 +213,7 @@ void StartMainTask(void *argument)
 void StartLedsTask(void *argument)
 {
   /* USER CODE BEGIN StartLedsTask */
-  int ledIndex = 1, ledIndexPrev, ledIndexSuiv;
+  int ledIndex = 0;
   int nbCycleBeforeFlash = 0;
   CouleurRGB applyColor;
 
@@ -249,35 +249,22 @@ void StartLedsTask(void *argument)
       }
 
       case LEDS_MATCH: {
-        ledIndexSuiv = ledIndex + 1;
-        if (ledIndexSuiv >= LED_NUMBER/2) {
-          ledIndexSuiv = 0;
-        }
-        ledIndexPrev = ledIndex - 1;
-        if (ledIndexPrev < 0) {
-          ledIndexPrev = LED_NUMBER/2 - 1;
-        }
-
         if (equipe == JAUNE) {
           applyColor = jauneColor;
         } else {
           applyColor = bleuColor;
         }
 
-        ws2812_SetAllLedsColor(0, 0, 0);
-        ws2812_SetLedColor(ledIndexPrev, applyColor.r / 2, applyColor.g / 2, applyColor.b / 2);
+        ws2812_FadeToBlack(150);
         ws2812_SetLedColor(ledIndex, applyColor.r, applyColor.g, applyColor.b);
-        ws2812_SetLedColor(ledIndexSuiv, applyColor.r / 2, applyColor.g / 2, applyColor.b / 2);
-        ws2812_SetLedColor(ledIndexPrev + LED_NUMBER/2, applyColor.r / 2, applyColor.g / 2, applyColor.b / 2);
         ws2812_SetLedColor(ledIndex + LED_NUMBER/2, applyColor.r, applyColor.g, applyColor.b);
-        ws2812_SetLedColor(ledIndexSuiv + LED_NUMBER/2, applyColor.r / 2, applyColor.g / 2, applyColor.b / 2);
 
         ledIndex++;
         if (ledIndex >= LED_NUMBER/2) {
           ledIndex = 0;
           nbCycleBeforeFlash++;
 
-          if (nbCycleBeforeFlash > 3) {
+          if (nbCycleBeforeFlash > 10) {
             nbCycleBeforeFlash = 0;
             for (int idx = 0; idx < 3; idx++) {
               ws2812_SetAllLedsColor(applyColor.r, applyColor.g, applyColor.b);
