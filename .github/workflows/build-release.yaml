@@ -1,0 +1,48 @@
+name: build-release
+
+on:
+  - push
+  - pull_request
+  - workflow_dispatch
+
+env:
+  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install ARM toolchain
+        run: sudo apt-get install gcc-arm-none-eabi binutils-arm-none-eabi
+
+      - name: Build firmware
+        id: build
+        run: |
+          mkdir -p cmake-build-release
+          cd cmake-build-release
+          cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE ..
+          make
+
+      - name: Notify slack success
+        if: steps.build.outcome == 'success' && github.ref == 'refs/heads/dev'
+        uses: voxmedia/github-action-slack-notify-build@v1.1.2
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          channel: builds
+          status: SUCCESS
+          color: good
+
+      - name: Notify slack fail
+        if: steps.build.outcome == 'failure' && github.ref == 'refs/heads/dev'
+        uses: voxmedia/github-action-slack-notify-build@v1.1.2
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          channel: builds
+          status: FAILED
+          color: danger
