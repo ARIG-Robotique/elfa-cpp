@@ -25,7 +25,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "stdio.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -159,9 +159,37 @@ void MX_FREERTOS_Init(void) {
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN StartDefaultTask */
+  GPIO_PinState auPrec = 0;
+  GPIO_PinState au = 0;
+  GPIO_PinState robotPrec = 0;
+  GPIO_PinState robot = 0;
+
+  while(au == 0) {
+    au = HAL_GPIO_ReadPin(PRES_AVANT_GPIO_Port, PRES_AVANT_Pin);
+    osDelay(10);
+  }
+
   /* Infinite loop */
   for(;;)
   {
+    if (HAL_GPIO_ReadPin(AU_GPIO_Port, AU_Pin) == 0) {
+      auPrec = GPIO_PIN_RESET;
+      au = GPIO_PIN_RESET;
+      robotPrec = GPIO_PIN_RESET;
+      robot = GPIO_PIN_RESET;
+
+      HAL_GPIO_WritePin(MOT_STBY_GPIO_Port, MOT_STBY_Pin, GPIO_PIN_SET);
+      HAL_GPIO_WritePin(MOT_PWMA_GPIO_Port, MOT_PWMA_Pin, GPIO_PIN_RESET);
+      continue;
+    }
+
+    robot = HAL_GPIO_ReadPin(PRES_AVANT_GPIO_Port, PRES_AVANT_Pin);
+    if (robot != robotPrec && robot == GPIO_PIN_SET) {
+      robotPrec = robot;
+      HAL_GPIO_WritePin(MOT_STBY_GPIO_Port, MOT_STBY_Pin, GPIO_PIN_RESET);
+      HAL_GPIO_WritePin(MOT_PWMA_GPIO_Port, MOT_PWMA_Pin, GPIO_PIN_SET);
+    }
+
     osDelay(1);
   }
   /* USER CODE END StartDefaultTask */
