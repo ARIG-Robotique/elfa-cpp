@@ -1015,7 +1015,7 @@ void StartDefaultTask(void const * argument)
   /* Infinite loop */
   for(;;)
   {
-	  int pres_robot = HAL_GPIO_ReadPin(PRES_AVANT_GPIO_Port, PRES_AVANT_Pin);
+	  int pres_robot = !HAL_GPIO_ReadPin(PRES_AVANT_GPIO_Port, PRES_AVANT_Pin);
 	  int au = HAL_GPIO_ReadPin(AU_GPIO_Port, AU_Pin);
 
 	  printf("pres_robot: %d", pres_robot);
