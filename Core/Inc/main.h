@@ -31,7 +31,7 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "stdio.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -49,8 +49,6 @@ extern "C" {
 
 /* USER CODE END EM */
 
-void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
-
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);
 
@@ -59,8 +57,7 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define PWM_TIMER_ARR 256
-#define UART_BAUDRATE 115200
+#define PWM_TIMER_ARR 1024
 #define ENCODER_CHA_Pin GPIO_PIN_15
 #define ENCODER_CHA_GPIO_Port GPIOA
 #define SWCLK_Pin GPIO_PIN_14
@@ -83,6 +80,8 @@ void Error_Handler(void);
 #define ENCODER_CHB_GPIO_Port GPIOA
 #define WAKEUP_Pin GPIO_PIN_0
 #define WAKEUP_GPIO_Port GPIOA
+#define WS2812_Pin GPIO_PIN_2
+#define WS2812_GPIO_Port GPIOA
 #define PRES_STATUETTE_Pin GPIO_PIN_6
 #define PRES_STATUETTE_GPIO_Port GPIOA
 #define MOT_AIN2_Pin GPIO_PIN_6
