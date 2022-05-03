@@ -24,11 +24,13 @@
 #include <WS2812.h>
 
 TIM_OC_InitTypeDef htim5Config;
+TIM_OC_InitTypeDef htim4Config;
 /* USER CODE END 0 */
 
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim5;
+DMA_HandleTypeDef hdma_tim5_ch3_up;
 
 /* TIM2 init function */
 void MX_TIM2_Init(void)
@@ -50,7 +52,7 @@ void MX_TIM2_Init(void)
   htim2.Init.Period = 4294967295;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  sConfig.EncoderMode = TIM_ENCODERMODE_TI1;
+  sConfig.EncoderMode = TIM_ENCODERMODE_TI12;
   sConfig.IC1Polarity = TIM_ICPOLARITY_RISING;
   sConfig.IC1Selection = TIM_ICSELECTION_DIRECTTI;
   sConfig.IC1Prescaler = TIM_ICPSC_DIV1;
@@ -145,7 +147,7 @@ void MX_TIM5_Init(void)
   htim5.Instance = TIM5;
   htim5.Init.Prescaler = (uint32_t)( (SystemCoreClock / TIMER_CLOCK_FREQ) - 1);
   htim5.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim5.Init.Period = TIMER_PERIOD * 3 / 2;
+  htim5.Init.Period = TIMER_PERIOD - 1;
   htim5.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim5.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_PWM_Init(&htim5) != HAL_OK)
@@ -167,7 +169,7 @@ void MX_TIM5_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN TIM5_Init 2 */
-  htim5Config = sConfigOC;
+
   /* USER CODE END TIM5_Init 2 */
   HAL_TIM_MspPostInit(&htim5);
 
@@ -229,6 +231,29 @@ void HAL_TIM_PWM_MspInit(TIM_HandleTypeDef* tim_pwmHandle)
   /* USER CODE END TIM5_MspInit 0 */
     /* TIM5 clock enable */
     __HAL_RCC_TIM5_CLK_ENABLE();
+
+    /* TIM5 DMA Init */
+    /* TIM5_CH3_UP Init */
+    hdma_tim5_ch3_up.Instance = DMA1_Stream0;
+    hdma_tim5_ch3_up.Init.Channel = DMA_CHANNEL_6;
+    hdma_tim5_ch3_up.Init.Direction = DMA_MEMORY_TO_PERIPH;
+    hdma_tim5_ch3_up.Init.PeriphInc = DMA_PINC_DISABLE;
+    hdma_tim5_ch3_up.Init.MemInc = DMA_MINC_ENABLE;
+    hdma_tim5_ch3_up.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+    hdma_tim5_ch3_up.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+    hdma_tim5_ch3_up.Init.Mode = DMA_CIRCULAR;
+    hdma_tim5_ch3_up.Init.Priority = DMA_PRIORITY_HIGH;
+    hdma_tim5_ch3_up.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+    if (HAL_DMA_Init(&hdma_tim5_ch3_up) != HAL_OK)
+    {
+      Error_Handler();
+    }
+
+    /* Several peripheral DMA handle pointers point to the same DMA handle.
+     Be aware that there is only one stream to perform all the requested DMAs. */
+    __HAL_LINKDMA(tim_pwmHandle,hdma[TIM_DMA_ID_CC3],hdma_tim5_ch3_up);
+    __HAL_LINKDMA(tim_pwmHandle,hdma[TIM_DMA_ID_UPDATE],hdma_tim5_ch3_up);
+
   /* USER CODE BEGIN TIM5_MspInit 1 */
 
   /* USER CODE END TIM5_MspInit 1 */
@@ -331,6 +356,10 @@ void HAL_TIM_PWM_MspDeInit(TIM_HandleTypeDef* tim_pwmHandle)
   /* USER CODE END TIM5_MspDeInit 0 */
     /* Peripheral clock disable */
     __HAL_RCC_TIM5_CLK_DISABLE();
+
+    /* TIM5 DMA DeInit */
+    HAL_DMA_DeInit(tim_pwmHandle->hdma[TIM_DMA_ID_CC3]);
+    HAL_DMA_DeInit(tim_pwmHandle->hdma[TIM_DMA_ID_UPDATE]);
   /* USER CODE BEGIN TIM5_MspDeInit 1 */
 
   /* USER CODE END TIM5_MspDeInit 1 */
