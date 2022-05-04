@@ -5,7 +5,6 @@
 #include "WS2812.h"
 #include "main.h"
 
-extern TIM_HandleTypeDef htim5;
 
 uint8_t r[LED_NUMBER];
 uint8_t g[LED_NUMBER];
@@ -20,7 +19,7 @@ void ws2812_Init() {
 	ws2812_fillBufferWhite();
 
 	// Start PWM Generator from DMA
-    if (HAL_TIM_PWM_Start_DMA(&htim5, TIM_CHANNEL_3, (uint32_t *) LedBuffer, LED_BUFFER_SIZE) != HAL_OK){
+    if (HAL_TIM_PWM_Start_DMA(&WS2812_TIM, WS2812_CHANNEL, (uint32_t *) LedBuffer, LED_BUFFER_SIZE) != HAL_OK){
     	Error_Handler();
     }
 }

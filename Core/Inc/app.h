@@ -5,10 +5,11 @@
  *      Author: MatPy
  */
 
-#ifndef INC_TASKS_H_
-#define INC_TASKS_H_
+#ifndef INC_APP_H_
+#define INC_APP_H_
 
+void ledTask();
 void stateMachine();
 
 
-#endif /* INC_TASKS_H_ */
+#endif /* INC_APP_H_ */
