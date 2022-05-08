@@ -92,14 +92,17 @@ void ledTask()
 	char lastLedUp = 0;
 
 	HAL_TIM_PWM_Start(&htim5, TIM_CHANNEL_3);
+	//ws2812_Init();
 
 	for(;;){
 		if(lastLedUp != ledUp){
 			if(ledUp){
 				TIM5->CCR3 = PWM_TIMER_ARR * 2 / 3;
+//				ws2812_fillBufferWhite();
+
 			}
 			else{
-				TIM5->CCR3 = PWM_TIMER_ARR * 1 / 3;
+				TIM5->CCR3 = PWM_TIMER_ARR / 3;
 			}
 		}
 		else{

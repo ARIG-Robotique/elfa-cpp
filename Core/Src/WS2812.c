@@ -10,8 +10,7 @@ uint8_t r[LED_NUMBER];
 uint8_t g[LED_NUMBER];
 uint8_t b[LED_NUMBER];
 
-void ws2812_fillBufferBlack(void);
-void ws2812_fillBufferWhite(void);
+
 void ws2812_fillBuffer(uint8_t colorValue);
 
 
