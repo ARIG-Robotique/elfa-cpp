@@ -195,6 +195,8 @@ void StartLedTask(void const * argument)
   /* USER CODE BEGIN StartLedTask */
   /* Infinite loop */
 	ledTask();
+
+	for(;;);
   /* USER CODE END StartLedTask */
 }
 
@@ -210,6 +212,9 @@ void StartMotorTask(void const * argument)
   /* USER CODE BEGIN StartMotorTask */
   /* Infinite loop */
 	//motorTask();
+
+	for(;;);
+
   /* USER CODE END StartMotorTask */
 }
 

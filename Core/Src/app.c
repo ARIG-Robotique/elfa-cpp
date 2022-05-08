@@ -96,16 +96,17 @@ void ledTask()
 	for(;;){
 		if(lastLedUp != ledUp){
 			if(ledUp){
-				TIM5->CCR3 = PWM_TIMER_ARR - PWM_TIMER_ARR * 2 / 3;
+				TIM5->CCR3 = PWM_TIMER_ARR * 2 / 3;
 			}
 			else{
-				TIM5->CCR3 = PWM_TIMER_ARR - PWM_TIMER_ARR * 1 / 3;
+				TIM5->CCR3 = PWM_TIMER_ARR * 1 / 3;
 			}
 		}
 		else{
 			TIM5->CCR3 = PWM_TIMER_ARR;
 		}
 		lastLedUp = ledUp;
+
 		osDelay(100);
 	}
 }
