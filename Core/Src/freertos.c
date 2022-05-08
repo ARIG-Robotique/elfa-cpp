@@ -51,13 +51,15 @@
 /* USER CODE END Variables */
 osThreadId defaultTaskHandle;
 osThreadId ledTaskHandle;
+osThreadId motorTaskHandle;
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void const * argument);
-void StartTask02(void const * argument);
+void StartLedTask(void const * argument);
+void StartMotorTask(void const * argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -150,12 +152,16 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
-  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 4096);
+  osThreadDef(defaultTask, StartDefaultTask, osPriorityHigh, 0, 4096);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
   /* definition and creation of ledTask */
-  osThreadDef(ledTask, StartTask02, osPriorityNormal, 0, 128);
+  osThreadDef(ledTask, StartLedTask, osPriorityNormal, 0, 128);
   ledTaskHandle = osThreadCreate(osThread(ledTask), NULL);
+
+  /* definition and creation of motorTask */
+  osThreadDef(motorTask, StartMotorTask, osPriorityNormal, 0, 128);
+  motorTaskHandle = osThreadCreate(osThread(motorTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -177,19 +183,34 @@ void StartDefaultTask(void const * argument)
   /* USER CODE END StartDefaultTask */
 }
 
-/* USER CODE BEGIN Header_StartTask02 */
+/* USER CODE BEGIN Header_StartLedTask */
 /**
 * @brief Function implementing the ledTask thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_StartTask02 */
-void StartTask02(void const * argument)
+/* USER CODE END Header_StartLedTask */
+void StartLedTask(void const * argument)
 {
-  /* USER CODE BEGIN StartTask02 */
+  /* USER CODE BEGIN StartLedTask */
   /* Infinite loop */
 	ledTask();
-  /* USER CODE END StartTask02 */
+  /* USER CODE END StartLedTask */
+}
+
+/* USER CODE BEGIN Header_StartMotorTask */
+/**
+* @brief Function implementing the motorTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartMotorTask */
+void StartMotorTask(void const * argument)
+{
+  /* USER CODE BEGIN StartMotorTask */
+  /* Infinite loop */
+	//motorTask();
+  /* USER CODE END StartMotorTask */
 }
 
 /* Private application code --------------------------------------------------*/

@@ -25,39 +25,23 @@
 enum state {INIT, WAIT, PRES_ROBOT, STATUETTE_OK};
 
 char ledUp = 0;
+char motorUp = 0;
 
 void stateMachine()
 {
-	// PWM
-	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
-	HAL_TIM_PWM_Start(&htim5, TIM_CHANNEL_3);
-
-	HAL_GPIO_WritePin(MOT_AIN1_GPIO_Port, MOT_AIN1_Pin, GPIO_PIN_RESET);
-	HAL_GPIO_WritePin(MOT_AIN2_GPIO_Port, MOT_AIN2_Pin, GPIO_PIN_SET);
-	TIM3->CCR2 = PWM_TIMER_ARR / 2;
-
 	enum state current_state = INIT, next_state;
-
-	uint32_t duty_cycle;
-	int acceleration_direction;
-	int rotation_direction;
-
-	uint32_t last_encoder_value = 0;
 
 	/* Infinite loop */
 	for(;;)
 	{
 		int pres_robot = !HAL_GPIO_ReadPin(PRES_AVANT_GPIO_Port, PRES_AVANT_Pin);
 		int au = HAL_GPIO_ReadPin(AU_GPIO_Port, AU_Pin);
-		uint32_t encoder_value = TIM2->CNT;
 
 		switch(current_state)
 		{
 		case INIT:
 			ledUp = 0;
-
-			// Extinction Moteur
-			HAL_GPIO_WritePin(MOT_STBY_GPIO_Port, MOT_STBY_Pin, GPIO_PIN_RESET);
+			motorUp = 0;
 
 			next_state = WAIT;
 			break;
@@ -91,9 +75,8 @@ void stateMachine()
 			}
 			else
 			{
+				motorUp = 1;
 				ledUp = 1;
-				HAL_GPIO_WritePin(MOT_STBY_GPIO_Port, MOT_STBY_Pin, GPIO_PIN_SET);
-
 			}
 			break;
 		}
@@ -107,6 +90,9 @@ void stateMachine()
 void ledTask()
 {
 	char lastLedUp = 0;
+
+	HAL_TIM_PWM_Start(&htim5, TIM_CHANNEL_3);
+
 	for(;;){
 		if(lastLedUp != ledUp){
 			if(ledUp){
@@ -123,3 +109,24 @@ void ledTask()
 		osDelay(100);
 	}
 }
+
+void motorTask()
+{
+	// PWM
+	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
+
+	HAL_GPIO_WritePin(MOT_AIN1_GPIO_Port, MOT_AIN1_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(MOT_AIN2_GPIO_Port, MOT_AIN2_Pin, GPIO_PIN_SET);
+	TIM3->CCR2 = 0;
+
+	for(;;){
+		if(motorUp){
+			HAL_GPIO_WritePin(MOT_STBY_GPIO_Port, MOT_STBY_Pin, GPIO_PIN_SET);
+		}
+		else {
+			HAL_GPIO_WritePin(MOT_STBY_GPIO_Port, MOT_STBY_Pin, GPIO_PIN_RESET);
+		}
+		osDelay(100);
+	}
+}
+

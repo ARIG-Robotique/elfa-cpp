@@ -10,6 +10,7 @@
 
 void ledTask();
 void stateMachine();
+void motorTask();
 
 
 #endif /* INC_APP_H_ */
