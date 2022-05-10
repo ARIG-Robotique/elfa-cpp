@@ -24,30 +24,38 @@
 
 enum state {INIT, WAIT, PRES_ROBOT, STATUETTE_OK};
 
-char ledUp = 0;
-char motorUp = 0;
+enum LedState{LED_OFF, LED_RED, LED_PATTERN};
+enum MotorState{MOTOR_OFF, MOTOR_ON};
+
+enum LedState ledUp = LED_OFF;
+
+enum MotorState motorUp = MOTOR_OFF;
 
 void stateMachine()
 {
-	enum state current_state = INIT, next_state;
+	enum state current_state = INIT, next_state = INIT;
 
 	/* Infinite loop */
 	for(;;)
 	{
 		int pres_robot = !HAL_GPIO_ReadPin(PRES_AVANT_GPIO_Port, PRES_AVANT_Pin);
-		int au = HAL_GPIO_ReadPin(AU_GPIO_Port, AU_Pin);
+		int au = !HAL_GPIO_ReadPin(AU_GPIO_Port, AU_Pin);
 
 		switch(current_state)
 		{
 		case INIT:
-			ledUp = 0;
-			motorUp = 0;
-
-			next_state = WAIT;
+			if(!au){
+				next_state = WAIT;
+			}
+			else
+			{
+				ledUp = LED_RED;
+				motorUp = MOTOR_OFF;
+			}
 			break;
 
 		case WAIT:
-			if(!au)
+			if(au)
 			{
 				next_state = INIT;
 			}
@@ -55,10 +63,15 @@ void stateMachine()
 			{
 				next_state = PRES_ROBOT;
 			}
+			else
+			{
+				ledUp = LED_OFF;
+				motorUp = MOTOR_OFF;
+			}
 			break;
 
 		case PRES_ROBOT:
-			if(!au)
+			if(au)
 			{
 				next_state = INIT;
 			}
@@ -69,14 +82,14 @@ void stateMachine()
 			break;
 
 		case STATUETTE_OK:
-			if(!au)
+			if(au)
 			{
 				next_state = INIT;
 			}
 			else
 			{
-				motorUp = 1;
-				ledUp = 1;
+				motorUp = MOTOR_ON;
+				ledUp = LED_PATTERN;
 			}
 			break;
 		}
@@ -89,26 +102,28 @@ void stateMachine()
 
 void ledTask()
 {
-	char lastLedUp = 0;
+	ws2812_Init();
 
-	HAL_TIM_PWM_Start(&htim5, TIM_CHANNEL_3);
-	//ws2812_Init();
+	ws2812_SetAllLedsColor(50, 50, 50);
+
+	osDelay(2000);
+	ws2812_Reset();
 
 	for(;;){
-		if(lastLedUp != ledUp){
-			if(ledUp){
-				TIM5->CCR3 = PWM_TIMER_ARR * 2 / 3;
-//				ws2812_fillBufferWhite();
+		switch(ledUp){
+		case LED_OFF:
+			ws2812_Reset();
+			break;
 
-			}
-			else{
-				TIM5->CCR3 = PWM_TIMER_ARR / 3;
-			}
+		case LED_RED:
+			ws2812_SetAllLedsColor(255, 0, 0);
+			break;
+
+		case LED_PATTERN:
+			circularTray();
+			rocketColumns();
+			break;
 		}
-		else{
-			TIM5->CCR3 = PWM_TIMER_ARR;
-		}
-		lastLedUp = ledUp;
 
 		osDelay(100);
 	}
@@ -119,16 +134,22 @@ void motorTask()
 	// PWM
 	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
 
-	HAL_GPIO_WritePin(MOT_AIN1_GPIO_Port, MOT_AIN1_Pin, GPIO_PIN_RESET);
-	HAL_GPIO_WritePin(MOT_AIN2_GPIO_Port, MOT_AIN2_Pin, GPIO_PIN_SET);
-	TIM3->CCR2 = 0;
+	HAL_GPIO_WritePin(MOT_AIN1_GPIO_Port, MOT_AIN1_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(MOT_AIN2_GPIO_Port, MOT_AIN2_Pin, GPIO_PIN_RESET);
+	TIM3->CCR2 = 90;
+
+	HAL_GPIO_WritePin(MOT_STBY_GPIO_Port, MOT_STBY_Pin, GPIO_PIN_RESET);
+
 
 	for(;;){
-		if(motorUp){
+		switch(motorUp){
+		case MOTOR_ON:
 			HAL_GPIO_WritePin(MOT_STBY_GPIO_Port, MOT_STBY_Pin, GPIO_PIN_SET);
-		}
-		else {
+			break;
+
+		case MOTOR_OFF:
 			HAL_GPIO_WritePin(MOT_STBY_GPIO_Port, MOT_STBY_Pin, GPIO_PIN_RESET);
+			break;
 		}
 		osDelay(100);
 	}

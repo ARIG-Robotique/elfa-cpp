@@ -12,22 +12,27 @@
 #define WS2812_FREQ		    800000 // it is fixed: WS2812 require 800kHz
 #define TIMER_CLOCK_FREQ	80000000 // can be modified - multiples of 0.8MHz are suggested
 #define TIMER_PERIOD		99 //TIMER_CLOCK_FREQ / WS2812_FREQ
-#define LED_NUMBER		    2 // how many LEDs the MCU should control?
+#define TRAY_LED_NUMBER     24
+#define COLUMN_LED_NUMBER   8
+#define LED_NUMBER		    (TRAY_LED_NUMBER + 2 * COLUMN_LED_NUMBER) // how many LEDs the MCU should control?
 #define LED_DATA_SIZE		LED_NUMBER * 24
-#define RESET_SLOTS_BEGIN	50
-#define RESET_SLOTS_END		50
-#define WS2812_LAST_SLOT	1
-#define LED_BUFFER_SIZE		RESET_SLOTS_BEGIN + LED_DATA_SIZE + WS2812_LAST_SLOT + RESET_SLOTS_END
+#define RESET_SLOTS_BEGIN	100
+#define RESET_SLOTS_END		100
+#define LED_BUFFER_SIZE		RESET_SLOTS_BEGIN + LED_DATA_SIZE + RESET_SLOTS_END
 #define WS2812_0		    TIMER_PERIOD / 3      // WS2812's zero high time is long about one third of the period
 #define WS2812_1		    TIMER_PERIOD * 2 / 3  // WS2812's one high time is long about two thirds of the period
-#define WS2812_RESET		TIMER_PERIOD
+#define WS2812_RESET		0
+
+
+#define TRAIL_LENGTH   4
+
 
 extern TIM_HandleTypeDef htim5;
 #define WS2812_TIM     htim5
 #define WS2812_CHANNEL TIM_CHANNEL_3
 
 #pragma GCC diagnostic ignored "-Wunused-variable"
-static uint8_t LedBuffer[LED_BUFFER_SIZE];
+static uint32_t LedBuffer[LED_BUFFER_SIZE];
 #pragma GCC diagnostic pop
 
 void ws2812_Init(void);
@@ -35,7 +40,9 @@ void ws2812_Init(void);
 void ws2812_SetLedColor(uint32_t ledNumber, uint8_t red, uint8_t green, uint8_t blue);
 void ws2812_SetAllLedsColor(uint8_t red, uint8_t green, uint8_t blue);
 void ws2812_FadeToBlack(uint8_t scaleBy);
-void ws2812_fillBufferBlack(void);
-void ws2812_fillBufferWhite(void);
+void circularTray(void);
+void rocketColumns(void);
+void ws2812_Reset(void);
+
 
 #endif // _WS2812_H
