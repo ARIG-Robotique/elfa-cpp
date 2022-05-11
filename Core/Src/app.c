@@ -20,7 +20,9 @@
 #define ENCODER_PULSES_PER_ROTATION  663
 #define MOTOR_ROTATION_SPEED_12V     143
 
-#define PERIOD 100
+#define PERIOD_STATE_MACHINE 100
+#define PERIOD_LED           100
+#define PERIOD_MOTOR         100
 
 enum state {INIT, WAIT, PRES_ROBOT, STATUETTE_OK};
 
@@ -95,7 +97,7 @@ void stateMachine()
 		}
 
 		current_state = next_state;
-		osDelay(PERIOD);
+		osDelay(PERIOD_STATE_MACHINE);
 	}
 }
 
@@ -103,11 +105,6 @@ void stateMachine()
 void ledTask()
 {
 	ws2812_Init();
-
-	ws2812_SetAllLedsColor(50, 50, 50);
-
-	osDelay(2000);
-	ws2812_Reset();
 
 	for(;;){
 		switch(ledUp){
@@ -125,21 +122,19 @@ void ledTask()
 			break;
 		}
 
-		osDelay(100);
+		osDelay(PERIOD_LED);
 	}
 }
 
 void motorTask()
 {
-	// PWM
 	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
 
 	HAL_GPIO_WritePin(MOT_AIN1_GPIO_Port, MOT_AIN1_Pin, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(MOT_AIN2_GPIO_Port, MOT_AIN2_Pin, GPIO_PIN_RESET);
-	TIM3->CCR2 = 90;
 
 	HAL_GPIO_WritePin(MOT_STBY_GPIO_Port, MOT_STBY_Pin, GPIO_PIN_RESET);
-
+	TIM3->CCR2 = 60;
 
 	for(;;){
 		switch(motorUp){
@@ -151,7 +146,7 @@ void motorTask()
 			HAL_GPIO_WritePin(MOT_STBY_GPIO_Port, MOT_STBY_Pin, GPIO_PIN_RESET);
 			break;
 		}
-		osDelay(100);
+		osDelay(PERIOD_MOTOR);
 	}
 }
 
