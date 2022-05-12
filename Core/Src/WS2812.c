@@ -11,6 +11,7 @@ uint8_t g[LED_NUMBER];
 uint8_t b[LED_NUMBER];
 
 int circularIndex;
+enum RocketColor{GREEN, WHITE} rocketColor;
 int columnIndex;
 
 void ws2812_fillBuffer(uint8_t colorValue);
@@ -30,6 +31,7 @@ void ws2812_Reset(void)
 	ws2812_fillBufferBlack();
 	circularIndex = 0;
 	columnIndex = 0;
+	rocketColor = GREEN;
 }
 
 
@@ -97,12 +99,14 @@ void ws2812_fillBuffer(uint8_t colorValue) {
 }
 
 void circularTray(void){
+
 	for(int ledNumber = 0 ; ledNumber < TRAY_LED_NUMBER ; ledNumber++)
 	{
-		if(ledNumber == circularIndex)
-			ws2812_SetLedColor(ledNumber, 0, 255, 0);
+		int newLedNumber = (ledNumber + circularIndex) % TRAY_LED_NUMBER;
+		if (ledNumber / 3 % 2)
+			ws2812_SetLedColor(newLedNumber, 0, 255, 0);
 		else
-			ws2812_SetLedColor(ledNumber, 0, 0, 0);
+			ws2812_SetLedColor(newLedNumber, 127, 127, 127);
 	}
 
 	circularIndex++;
@@ -110,7 +114,10 @@ void circularTray(void){
 }
 
 void setColumnLed(int columnNumber, uint8_t red, uint8_t green, uint8_t blue){
-	int column1 = columnNumber + TRAY_LED_NUMBER, column2 = columnNumber + TRAY_LED_NUMBER + COLUMN_LED_NUMBER;
+	if(columnNumber < 0 || columnNumber >= COLUMN_LED_NUMBER)
+		return;
+
+	int column1 = COLUMN1_LED_OFFSET + columnNumber, column2 = COLUMN2_LED_OFFSET + columnNumber;
 
 	ws2812_SetLedColor(column1, red, green, blue);
 	ws2812_SetLedColor(column2, red, green, blue);
@@ -124,13 +131,25 @@ void rocketColumns(void){
 
 	for(int trailIndex = 0 ; trailIndex < TRAIL_LENGTH ; trailIndex++)
 	{
-		int ledNumber = ((columnIndex - trailIndex) + COLUMN_LED_NUMBER) % COLUMN_LED_NUMBER;
-		uint8_t intensity =  255 / (1 << trailIndex);
-		setColumnLed(ledNumber, intensity, intensity, intensity);
+		int ledNumber = columnIndex - trailIndex;
+
+		if(ledNumber >= 0 && ledNumber < COLUMN_LED_NUMBER)
+		{
+			uint8_t intensity =  255 / (1 << trailIndex);
+
+			if(rocketColor == GREEN)
+				setColumnLed(ledNumber, 0, intensity, 0);
+			else
+				setColumnLed(ledNumber, intensity / 3, intensity / 3, intensity / 3);
+		}
 	}
 
 	columnIndex++;
-	columnIndex %= COLUMN_LED_NUMBER;
+	if(columnIndex > COLUMN_LED_NUMBER + TRAIL_LENGTH)
+	{
+		columnIndex = 0;
+		rocketColor = !rocketColor;
+	}
 }
 
 int testIndex = 0;
