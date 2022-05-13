@@ -160,11 +160,15 @@ void rocketColumns(void){
 
 int testIndex = 0;
 void testLed(){
-	for(int ledNumber = 0 ; ledNumber < TRAY_LED_NUMBER ; ledNumber++)
-		ws2812_SetLedColor(ledNumber, 0, 0, 0);
+	for(int ledNumber = 0 ; ledNumber < TRAY_LED_NUMBER ; ledNumber++){
+		if(ledNumber == testIndex)
+			ws2812_SetLedColor(ledNumber, 100, 100, 100);
+		else
+			ws2812_SetLedColor(ledNumber, 0, 0, 0);
+	}
 
 	testIndex++;
-	testIndex %= LED_NUMBER * 10;
+	testIndex %= TRAY_LED_NUMBER;
 }
 
 

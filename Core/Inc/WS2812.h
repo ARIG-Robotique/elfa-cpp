@@ -11,7 +11,7 @@
 
 
 #define TRAY_LED_NUMBER     24
-#define TRAIL_LENGTH   4
+#define TRAIL_LENGTH        4
 #define COLUMN_LED_NUMBER   8
 
 #define TRAY_LED_OFFSET     0
@@ -22,11 +22,11 @@
 
 #define WS2812_FREQ		    800000 // it is fixed: WS2812 require 800kHz
 #define TIMER_CLOCK_FREQ	80000000 // can be modified - multiples of 0.8MHz are suggested
-#define TIMER_PERIOD		99 //TIMER_CLOCK_FREQ / WS2812_FREQ
+#define TIMER_PERIOD		(TIMER_CLOCK_FREQ / WS2812_FREQ - 1)
 #define LED_NUMBER		    (TRAY_LED_NUMBER + 2 * COLUMN_LED_NUMBER) // how many LEDs the MCU should control?
 #define LED_DATA_SIZE		LED_NUMBER * 24
-#define RESET_SLOTS_BEGIN	100
-#define RESET_SLOTS_END		100
+#define RESET_SLOTS_BEGIN	40
+#define RESET_SLOTS_END		40
 #define LED_BUFFER_SIZE		(RESET_SLOTS_BEGIN + LED_DATA_SIZE + RESET_SLOTS_END)
 #define WS2812_0		    (TIMER_PERIOD / 3)      // WS2812's zero high time is long about one third of the period
 #define WS2812_1		    (TIMER_PERIOD * 2 / 3)  // WS2812's one high time is long about two thirds of the period

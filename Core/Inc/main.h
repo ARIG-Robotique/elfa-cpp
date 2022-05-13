@@ -58,8 +58,8 @@ void Error_Handler(void);
 
 /* Private defines -----------------------------------------------------------*/
 #define PWM_TIMER_ARR 99
-#define ENCODER_CHA_Pin GPIO_PIN_15
-#define ENCODER_CHA_GPIO_Port GPIOA
+#define ENCODER_CHB_Pin GPIO_PIN_15
+#define ENCODER_CHB_GPIO_Port GPIOA
 #define SWCLK_Pin GPIO_PIN_14
 #define SWCLK_GPIO_Port GPIOA
 #define SWDIO_Pin GPIO_PIN_13
@@ -76,14 +76,14 @@ void Error_Handler(void);
 #define LED2_GPIO_Port GPIOD
 #define LED1_Pin GPIO_PIN_6
 #define LED1_GPIO_Port GPIOG
-#define ENCODER_CHB_Pin GPIO_PIN_1
-#define ENCODER_CHB_GPIO_Port GPIOA
+#define ENCODER_CHA_Pin GPIO_PIN_1
+#define ENCODER_CHA_GPIO_Port GPIOA
 #define WAKEUP_Pin GPIO_PIN_0
 #define WAKEUP_GPIO_Port GPIOA
 #define WS2812_Pin GPIO_PIN_2
 #define WS2812_GPIO_Port GPIOA
-#define MOT_STBY_2_Pin GPIO_PIN_6
-#define MOT_STBY_2_GPIO_Port GPIOA
+#define PRES_STATUETTE_Pin GPIO_PIN_6
+#define PRES_STATUETTE_GPIO_Port GPIOA
 #define MOT_AIN2_Pin GPIO_PIN_6
 #define MOT_AIN2_GPIO_Port GPIOH
 #define MOT_PWM_Pin GPIO_PIN_7

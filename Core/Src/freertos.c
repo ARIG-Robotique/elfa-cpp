@@ -213,7 +213,7 @@ void StartMotorTask(void const * argument)
 {
   /* USER CODE BEGIN StartMotorTask */
   /* Infinite loop */
-	//motorTask();
+	motorTask();
 
 	for(;;);
 
