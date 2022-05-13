@@ -18,6 +18,7 @@
 #define COLUMN1_LED_OFFSET  TRAY_LED_NUMBER
 #define COLUMN2_LED_OFFSET  (TRAY_LED_NUMBER + COLUMN_LED_NUMBER)
 
+#define BLINKING_LED_PERIOD  5
 
 #define WS2812_FREQ		    800000 // it is fixed: WS2812 require 800kHz
 #define TIMER_CLOCK_FREQ	80000000 // can be modified - multiples of 0.8MHz are suggested
@@ -47,6 +48,8 @@ void ws2812_FadeToBlack(uint8_t scaleBy);
 void circularTray(void);
 void rocketColumns(void);
 void ws2812_Reset(void);
+void blinkingRed(void);
+
 
 
 #endif // _WS2812_H

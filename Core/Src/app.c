@@ -14,6 +14,8 @@
 #define MIN_DUTY_CYCLE   64
 #define DUTY_CYCLE_RATIO 100
 
+#define VALIDATION_PERIOD 20
+
 #define MOTOR_AXIS_GEARS 20
 #define TRAY_AXIS_GEARS  70
 
@@ -24,20 +26,22 @@
 #define PERIOD_LED           100
 #define PERIOD_MOTOR         100
 
-enum state {INIT, WAIT, PRES_ROBOT, STATUETTE_OK};
 
-enum LedState{LED_OFF, LED_RED, LED_PATTERN};
-enum MotorState{MOTOR_OFF, MOTOR_ON};
 
-enum LedState ledUp = LED_OFF;
+enum state {INIT, VALIDATION, WAIT, PRES_ROBOT, STATUETTE_OK};
 
-enum MotorState motorUp = MOTOR_OFF;
+enum LedCmd{LED_OFF, LED_RED, LED_PATTERN, LED_OK};
+enum MotorCmd{MOTOR_OFF, MOTOR_ON};
+
+enum LedCmd ledCmd = LED_OFF;
+enum MotorCmd motorCmd = MOTOR_OFF;
+
+int validationCounter;
 
 void stateMachine()
 {
 	enum state current_state = INIT, next_state = INIT;
 
-	/* Infinite loop */
 	for(;;)
 	{
 		int pres_robot = !HAL_GPIO_ReadPin(PRES_AVANT_GPIO_Port, PRES_AVANT_Pin);
@@ -46,13 +50,22 @@ void stateMachine()
 		switch(current_state)
 		{
 		case INIT:
+			motorCmd = MOTOR_OFF;
+			validationCounter = VALIDATION_PERIOD;
 			if(!au){
-				next_state = WAIT;
+				next_state = VALIDATION;
 			}
-			else
-			{
-				ledUp = LED_RED;
-				motorUp = MOTOR_OFF;
+			else{
+				ledCmd = LED_RED;
+			}
+			break;
+
+		case VALIDATION:
+			ledCmd = LED_OK;
+			validationCounter--;
+
+			if(validationCounter <= 0){
+				next_state = WAIT;
 			}
 			break;
 
@@ -65,11 +78,7 @@ void stateMachine()
 			{
 				next_state = PRES_ROBOT;
 			}
-			else
-			{
-				ledUp = LED_OFF;
-				motorUp = MOTOR_OFF;
-			}
+			ledCmd = LED_OFF;
 			break;
 
 		case PRES_ROBOT:
@@ -81,6 +90,7 @@ void stateMachine()
 			{
 				next_state = STATUETTE_OK;
 			}
+			ledCmd = LED_PATTERN;
 			break;
 
 		case STATUETTE_OK:
@@ -88,11 +98,7 @@ void stateMachine()
 			{
 				next_state = INIT;
 			}
-			else
-			{
-				motorUp = MOTOR_ON;
-				ledUp = LED_PATTERN;
-			}
+			motorCmd = MOTOR_ON;
 			break;
 		}
 
@@ -107,13 +113,17 @@ void ledTask()
 	ws2812_Init();
 
 	for(;;){
-		switch(ledUp){
+		switch(ledCmd){
 		case LED_OFF:
 			ws2812_Reset();
 			break;
 
+		case LED_OK:
+			ws2812_SetAllLedsColor(0, 255, 0);
+			break;
+
 		case LED_RED:
-			ws2812_SetAllLedsColor(255, 0, 0);
+			blinkingRed();
 			break;
 
 		case LED_PATTERN:
@@ -129,15 +139,16 @@ void ledTask()
 void motorTask()
 {
 	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
+	HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_ALL);
 
 	HAL_GPIO_WritePin(MOT_AIN1_GPIO_Port, MOT_AIN1_Pin, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(MOT_AIN2_GPIO_Port, MOT_AIN2_Pin, GPIO_PIN_RESET);
 
 	HAL_GPIO_WritePin(MOT_STBY_GPIO_Port, MOT_STBY_Pin, GPIO_PIN_RESET);
-	TIM3->CCR2 = 60;
+	TIM3->CCR2 = 40;
 
 	for(;;){
-		switch(motorUp){
+		switch(motorCmd){
 		case MOTOR_ON:
 			HAL_GPIO_WritePin(MOT_STBY_GPIO_Port, MOT_STBY_Pin, GPIO_PIN_SET);
 			break;

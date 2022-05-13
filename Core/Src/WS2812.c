@@ -5,7 +5,6 @@
 #include "WS2812.h"
 #include "main.h"
 
-
 uint8_t r[LED_NUMBER];
 uint8_t g[LED_NUMBER];
 uint8_t b[LED_NUMBER];
@@ -13,6 +12,8 @@ uint8_t b[LED_NUMBER];
 int circularIndex;
 enum RocketColor{GREEN, WHITE} rocketColor;
 int columnIndex;
+
+int blinkingCounter;
 
 void ws2812_fillBuffer(uint8_t colorValue);
 void ws2812_fillBufferBlack(void);
@@ -26,12 +27,14 @@ void ws2812_Init(void) {
     }
 }
 
+
 void ws2812_Reset(void)
 {
 	ws2812_fillBufferBlack();
 	circularIndex = 0;
 	columnIndex = 0;
 	rocketColor = GREEN;
+	blinkingCounter = 0;
 }
 
 
@@ -113,6 +116,7 @@ void circularTray(void){
 	circularIndex %= TRAY_LED_NUMBER;
 }
 
+
 void setColumnLed(int columnNumber, uint8_t red, uint8_t green, uint8_t blue){
 	if(columnNumber < 0 || columnNumber >= COLUMN_LED_NUMBER)
 		return;
@@ -122,6 +126,7 @@ void setColumnLed(int columnNumber, uint8_t red, uint8_t green, uint8_t blue){
 	ws2812_SetLedColor(column1, red, green, blue);
 	ws2812_SetLedColor(column2, red, green, blue);
 }
+
 
 void rocketColumns(void){
 	for(int ledNumber = 0 ; ledNumber < COLUMN_LED_NUMBER ; ledNumber++)
@@ -152,6 +157,7 @@ void rocketColumns(void){
 	}
 }
 
+
 int testIndex = 0;
 void testLed(){
 	for(int ledNumber = 0 ; ledNumber < TRAY_LED_NUMBER ; ledNumber++)
@@ -159,4 +165,16 @@ void testLed(){
 
 	testIndex++;
 	testIndex %= LED_NUMBER * 10;
+}
+
+
+void blinkingRed(void)
+{
+	if(blinkingCounter < BLINKING_LED_PERIOD / 2)
+		ws2812_SetAllLedsColor(255, 0, 0);
+	else
+		ws2812_SetAllLedsColor(0, 0, 0);
+
+	blinkingCounter++;
+	blinkingCounter %= BLINKING_LED_PERIOD;
 }
