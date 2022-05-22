@@ -147,6 +147,15 @@ void ledTask()
 	}
 }
 
+int _write(int file, char *ptr, int len)
+{
+  /* Implement your write code here, this is used by puts and printf for example */
+  int i=0;
+  for(i=0 ; i<len ; i++)
+    ITM_SendChar((*ptr++));
+  return len;
+}
+
 void motorTask()
 {
 	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
@@ -177,7 +186,8 @@ void motorTask()
 		motorSpeed = encoderDiff * 60 * FREQ_MOTOR / ENCODER_PULSES_PER_ROTATION;
 
 		traySpeed = motorSpeed / GEARS_RATIO;
-
+		printf("traySpeed = %d", traySpeed);
+		ITM_SendChar('a');
 		lastCounterValue = counterValue;
 
 		osDelay(PERIOD_MOTOR);
