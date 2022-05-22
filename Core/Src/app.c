@@ -8,6 +8,7 @@
 #include "WS2812.h"
 #include "tim.h"
 #include "cmsis_os.h"
+#include "usart.h"
 
 
 #define MAX_DUTY_CYCLE   67
@@ -25,8 +26,6 @@
 #define PERIOD_STATE_MACHINE 100
 #define PERIOD_LED           100
 #define PERIOD_MOTOR         100
-
-
 
 enum state {INIT, VALIDATION, WAIT, PRES_ROBOT, STATUETTE_OK};
 
@@ -61,11 +60,16 @@ void stateMachine()
 			break;
 
 		case VALIDATION:
-			ledCmd = LED_OK;
-			validationCounter--;
+			if(au){
+				next_state = INIT;
+			}
+			else{
+				ledCmd = LED_OK;
+				validationCounter--;
 
-			if(validationCounter <= 0){
-				next_state = WAIT;
+				if(validationCounter <= 0){
+					next_state = WAIT;
+				}
 			}
 			break;
 
@@ -141,13 +145,15 @@ void motorTask()
 	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
 	HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_ALL);
 
-	HAL_GPIO_WritePin(MOT_AIN1_GPIO_Port, MOT_AIN1_Pin, GPIO_PIN_SET);
-	HAL_GPIO_WritePin(MOT_AIN2_GPIO_Port, MOT_AIN2_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(MOT_AIN1_GPIO_Port, MOT_AIN1_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(MOT_AIN2_GPIO_Port, MOT_AIN2_Pin, GPIO_PIN_SET);
 
 	HAL_GPIO_WritePin(MOT_STBY_GPIO_Port, MOT_STBY_Pin, GPIO_PIN_RESET);
-	TIM3->CCR2 = 40;
+	TIM3->CCR2 = 100;
 
 	for(;;){
+		HAL_UART_Transmit(&huart3, (uint8_t*) "TEST\n", 6, 100);
+
 		switch(motorCmd){
 		case MOTOR_ON:
 			HAL_GPIO_WritePin(MOT_STBY_GPIO_Port, MOT_STBY_Pin, GPIO_PIN_SET);

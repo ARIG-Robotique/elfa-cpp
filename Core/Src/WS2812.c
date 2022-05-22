@@ -10,7 +10,7 @@ uint8_t g[LED_NUMBER];
 uint8_t b[LED_NUMBER];
 
 int circularIndex;
-enum RocketColor{GREEN, WHITE} rocketColor;
+enum RocketColor{ROCKET_WHITE, ROCKET_GREEN, ROCKET_RED, ROCKET_BLUE, ROCKET_NB} rocketColor;
 int columnIndex;
 
 int blinkingCounter;
@@ -33,7 +33,7 @@ void ws2812_Reset(void)
 	ws2812_fillBufferBlack();
 	circularIndex = 0;
 	columnIndex = 0;
-	rocketColor = GREEN;
+	rocketColor = ROCKET_GREEN;
 	blinkingCounter = 0;
 }
 
@@ -106,7 +106,7 @@ void circularTray(void){
 	for(int ledNumber = 0 ; ledNumber < TRAY_LED_NUMBER ; ledNumber++)
 	{
 		int newLedNumber = (ledNumber + circularIndex) % TRAY_LED_NUMBER;
-		if (ledNumber / 3 % 2)
+		if (ledNumber / 4 % 2)
 			ws2812_SetLedColor(newLedNumber, 0, 255, 0);
 		else
 			ws2812_SetLedColor(newLedNumber, 127, 127, 127);
@@ -142,10 +142,22 @@ void rocketColumns(void){
 		{
 			uint8_t intensity =  255 / (1 << trailIndex);
 
-			if(rocketColor == GREEN)
+			switch(rocketColor){
+			case ROCKET_GREEN:
 				setColumnLed(ledNumber, 0, intensity, 0);
-			else
+				break;
+			case ROCKET_RED:
+				setColumnLed(ledNumber, intensity, 0, 0);
+				break;
+			case ROCKET_BLUE:
+				setColumnLed(ledNumber, 0, 0, intensity);
+				break;
+			case ROCKET_WHITE:
 				setColumnLed(ledNumber, intensity / 3, intensity / 3, intensity / 3);
+				break;
+			default:
+				break;
+			}
 		}
 	}
 
@@ -153,7 +165,8 @@ void rocketColumns(void){
 	if(columnIndex > COLUMN_LED_NUMBER + TRAIL_LENGTH)
 	{
 		columnIndex = 0;
-		rocketColor = !rocketColor;
+		rocketColor++;
+		rocketColor %= ROCKET_NB;
 	}
 }
 
