@@ -170,6 +170,12 @@ void rocketColumns(void){
 	}
 }
 
+void setTrayColor(uint8_t red, uint8_t green, uint8_t blue){
+	for(int ledNumber = TRAY_LED_OFFSET ; ledNumber < TRAY_LED_OFFSET + TRAY_LED_NUMBER ; ledNumber++){
+		ws2812_SetLedColor(ledNumber, red, green, blue);
+	}
+}
+
 
 int testIndex = 0;
 void testLed(){
