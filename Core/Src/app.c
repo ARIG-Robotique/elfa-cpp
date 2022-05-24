@@ -11,7 +11,7 @@
 #include "usart.h"
 #include "motor.h"
 
-#define VALIDATION_PERIOD 20
+#define VALIDATION_PERIOD    20
 
 #define PERIOD_STATE_MACHINE 100
 #define PERIOD_LED           100
@@ -44,7 +44,7 @@ void stateMachine()
 		{
 		case INIT:
 			motorCmd = MOTOR_OFF;
-			validationCounter = VALIDATION_PERIOD;
+			validationCounter = 0;
 			if(!au){
 				next_state = VALIDATION;
 			}
@@ -59,9 +59,9 @@ void stateMachine()
 			}
 			else{
 				ledCmd = LED_OK;
-				validationCounter--;
+				validationCounter++;
 
-				if(validationCounter <= 0){
+				if(validationCounter > VALIDATION_PERIOD){
 					next_state = WAIT;
 				}
 			}
@@ -123,7 +123,7 @@ void ledTask()
 			break;
 
 		case LED_OK:
-			ws2812_SetAllLedsColor(0, 255, 0);
+			validation(VALIDATION_PERIOD);
 			break;
 
 		case LED_RED:

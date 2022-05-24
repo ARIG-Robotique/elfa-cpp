@@ -50,5 +50,6 @@ void rocketColumns(void);
 void ws2812_Reset(void);
 void blinkingRed(void);
 void setTrayColor(uint8_t red, uint8_t green, uint8_t blue);
+void validation(int validationPeriod);
 
 #endif // _WS2812_H

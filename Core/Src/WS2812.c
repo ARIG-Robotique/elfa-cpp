@@ -9,17 +9,33 @@ uint8_t r[LED_NUMBER];
 uint8_t g[LED_NUMBER];
 uint8_t b[LED_NUMBER];
 
-int circularIndex;
-enum RocketColor{ROCKET_WHITE, ROCKET_GREEN, ROCKET_RED, ROCKET_BLUE, ROCKET_NB} rocketColor;
-int columnIndex;
+typedef struct RgbColor
+{
+    unsigned char r;
+    unsigned char g;
+    unsigned char b;
+} RgbColor;
 
+typedef struct HsvColor
+{
+    unsigned char h;
+    unsigned char s;
+    unsigned char v;
+} HsvColor;
+
+int circularIndex;
+enum RocketDirection {UP=1, DOWN=-1} rocketDirection;
+int columnIndex;
 int blinkingCounter;
+int rocketHue;
+int validationCounterLed;
 
 void ws2812_fillBuffer(uint8_t colorValue);
 void ws2812_fillBufferBlack(void);
 void ws2812_fillBufferWhite(void);
+RgbColor HsvToRgb(HsvColor hsv);
 
-void ws2812_Init(void) {
+void ws2812_Init (void) {
 	ws2812_Reset();
 	// Start PWM Generator from DMA
     if (HAL_TIM_PWM_Start_DMA(&WS2812_TIM, WS2812_CHANNEL, (uint32_t *) LedBuffer, LED_BUFFER_SIZE) != HAL_OK){
@@ -28,17 +44,18 @@ void ws2812_Init(void) {
 }
 
 
-void ws2812_Reset(void)
-{
+void ws2812_Reset (void) {
 	ws2812_fillBufferBlack();
 	circularIndex = 0;
 	columnIndex = 0;
-	rocketColor = ROCKET_GREEN;
+	rocketDirection = UP;
 	blinkingCounter = 0;
+	rocketHue = 0;
+	validationCounterLed = 0;
 }
 
 
-void ws2812_SetAllLedsColor(uint8_t red, uint8_t green, uint8_t blue) {
+void ws2812_SetAllLedsColor (uint8_t red, uint8_t green, uint8_t blue) {
 	for (uint32_t idx = 0 ; idx < LED_NUMBER ; idx++) {
 		ws2812_SetLedColor(idx, red, green, blue);
 	}
@@ -55,7 +72,7 @@ void ws2812_FadeToBlack(uint8_t scaleBy) {
 	}
 }
 
-void ws2812_SetLedColor(uint32_t ledNumber, uint8_t red, uint8_t green, uint8_t blue) {
+void ws2812_SetLedColor (uint32_t ledNumber, uint8_t red, uint8_t green, uint8_t blue) {
 	uint32_t tempBuffer[24];
 	uint32_t i;
 	uint32_t ledIndex = ledNumber % LED_NUMBER;
@@ -79,11 +96,11 @@ void ws2812_fillBufferBlack() {
 	 ws2812_fillBuffer(WS2812_0);
 }
 
-void ws2812_fillBufferWhite() {
+void ws2812_fillBufferWhite (void) {
 	 ws2812_fillBuffer(WS2812_1);
 }
 
-void ws2812_fillBuffer(uint8_t colorValue) {
+void ws2812_fillBuffer (uint8_t colorValue) {
 	// All LEDs on
 	uint32_t index;
 
@@ -101,10 +118,16 @@ void ws2812_fillBuffer(uint8_t colorValue) {
 	}
 }
 
-void circularTray(void){
 
-	for(int ledNumber = 0 ; ledNumber < TRAY_LED_NUMBER ; ledNumber++)
-	{
+void setTrayColor (uint8_t red, uint8_t green, uint8_t blue) {
+	for(int ledNumber = TRAY_LED_OFFSET ; ledNumber < TRAY_LED_OFFSET + TRAY_LED_NUMBER ; ledNumber++){
+		ws2812_SetLedColor(ledNumber, red, green, blue);
+	}
+}
+
+
+void circularTray (void){
+	for(int ledNumber = 0 ; ledNumber < TRAY_LED_NUMBER ; ledNumber++) {
 		int newLedNumber = (ledNumber + circularIndex) % TRAY_LED_NUMBER;
 		if (ledNumber / 4 % 2)
 			ws2812_SetLedColor(newLedNumber, 0, 255, 0);
@@ -117,7 +140,7 @@ void circularTray(void){
 }
 
 
-void setColumnLed(int columnNumber, uint8_t red, uint8_t green, uint8_t blue){
+void setColumnLed (int columnNumber, uint8_t red, uint8_t green, uint8_t blue) {
 	if(columnNumber < 0 || columnNumber >= COLUMN_LED_NUMBER)
 		return;
 
@@ -128,67 +151,27 @@ void setColumnLed(int columnNumber, uint8_t red, uint8_t green, uint8_t blue){
 }
 
 
-void rocketColumns(void){
-	for(int ledNumber = 0 ; ledNumber < COLUMN_LED_NUMBER ; ledNumber++)
-	{
-		setColumnLed(ledNumber, 0, 0, 0);
+void rocketColumns (void) {
+	HsvColor hsv = {rocketHue, 255, 255};
+	RgbColor rgb = HsvToRgb(hsv);
+
+	ws2812_FadeToBlack(127);
+	setColumnLed(columnIndex, rgb.r, rgb.g, rgb.b);
+
+	columnIndex += rocketDirection;
+	rocketHue += 5;
+	rocketHue %= 256;
+
+	if(columnIndex == 0 && rocketDirection == DOWN)	{
+		rocketDirection = UP;
 	}
-
-	for(int trailIndex = 0 ; trailIndex < TRAIL_LENGTH ; trailIndex++)
-	{
-		int ledNumber = columnIndex - trailIndex;
-
-		if(ledNumber >= 0 && ledNumber < COLUMN_LED_NUMBER)
-		{
-			uint8_t intensity =  255 / (1 << trailIndex);
-
-			switch(rocketColor){
-			case ROCKET_GREEN:
-				setColumnLed(ledNumber, 0, intensity, 0);
-				break;
-			case ROCKET_RED:
-				setColumnLed(ledNumber, intensity, 0, 0);
-				break;
-			case ROCKET_BLUE:
-				setColumnLed(ledNumber, 0, 0, intensity);
-				break;
-			case ROCKET_WHITE:
-				setColumnLed(ledNumber, intensity / 3, intensity / 3, intensity / 3);
-				break;
-			default:
-				break;
-			}
-		}
-	}
-
-	columnIndex++;
-	if(columnIndex > COLUMN_LED_NUMBER + TRAIL_LENGTH)
-	{
-		columnIndex = 0;
-		rocketColor++;
-		rocketColor %= ROCKET_NB;
-	}
-}
-
-void setTrayColor(uint8_t red, uint8_t green, uint8_t blue){
-	for(int ledNumber = TRAY_LED_OFFSET ; ledNumber < TRAY_LED_OFFSET + TRAY_LED_NUMBER ; ledNumber++){
-		ws2812_SetLedColor(ledNumber, red, green, blue);
+	if(columnIndex == COLUMN_LED_NUMBER - 1 && rocketDirection == UP) {
+		rocketDirection = DOWN;
 	}
 }
 
 
-int testIndex = 0;
-void testLed(){
-	for(int ledNumber = 0 ; ledNumber < TRAY_LED_NUMBER ; ledNumber++)
-		ws2812_SetLedColor(ledNumber, 0, 0, 0);
-
-	testIndex++;
-	testIndex %= LED_NUMBER * 10;
-}
-
-
-void blinkingRed(void)
-{
+void blinkingRed(void) {
 	if(blinkingCounter < BLINKING_LED_PERIOD / 2)
 		ws2812_SetAllLedsColor(255, 0, 0);
 	else
@@ -196,4 +179,57 @@ void blinkingRed(void)
 
 	blinkingCounter++;
 	blinkingCounter %= BLINKING_LED_PERIOD;
+}
+
+
+void validation(int validationPeriod) {
+	ws2812_SetAllLedsColor(0, 255 - 255 * validationCounterLed / validationPeriod, 0);
+	if (validationCounterLed < validationPeriod) {
+		validationCounterLed++;
+	}
+}
+
+
+RgbColor HsvToRgb(HsvColor hsv) {
+    RgbColor rgb;
+    unsigned char region, remainder, p, q, t;
+
+    if (hsv.s == 0)
+    {
+        rgb.r = hsv.v;
+        rgb.g = hsv.v;
+        rgb.b = hsv.v;
+        return rgb;
+    }
+
+    region = hsv.h / 43;
+    remainder = (hsv.h - (region * 43)) * 6;
+
+    p = (hsv.v * (255 - hsv.s)) >> 8;
+    q = (hsv.v * (255 - ((hsv.s * remainder) >> 8))) >> 8;
+    t = (hsv.v * (255 - ((hsv.s * (255 - remainder)) >> 8))) >> 8;
+
+    switch (region)
+    {
+        case 0:
+            rgb.r = hsv.v; rgb.g = t; rgb.b = p;
+            break;
+        case 1:
+            rgb.r = q; rgb.g = hsv.v; rgb.b = p;
+            break;
+        case 2:
+            rgb.r = p; rgb.g = hsv.v; rgb.b = t;
+            break;
+        case 3:
+            rgb.r = p; rgb.g = q; rgb.b = hsv.v;
+            break;
+        case 4:
+            rgb.r = t; rgb.g = p; rgb.b = hsv.v;
+            break;
+        default:
+            rgb.r = hsv.v; rgb.g = p; rgb.b = q;
+            break;
+    }
+
+    return rgb;
 }
